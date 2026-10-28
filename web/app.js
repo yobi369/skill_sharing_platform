@@ -597,7 +597,20 @@ async function checkConnection() {
   }
 }
 
+function applyApiAvailability() {
+  if (API_BASE) return;
+  document.body.classList.add("api-not-configured");
+  document.querySelectorAll("form input, form textarea, form select, form button").forEach((control) => {
+    control.disabled = true;
+  });
+  for (const id of ["load-more", "delete-account-open", "signout-button", "refresh-notifications", "refresh-reports"]) {
+    const control = byId(id);
+    if (control) control.disabled = true;
+  }
+}
+
 async function init() {
+  applyApiAvailability();
   const url = new URL(window.location.href);
   const verificationToken = url.searchParams.get("verify");
   const resetToken = url.searchParams.get("reset");
