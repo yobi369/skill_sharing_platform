@@ -358,8 +358,13 @@ export function buildApp({ pool: suppliedPool, jwtSecret = process.env.JWT_SECRE
     if (targetUserId === request.identity.id) return reply.code(400).send({ error: "cannot_report_own_content" });
     const existing = await pool.query("SELECT id FROM reports WHERE reporter_id = $1 AND target_type = $2 AND target_id = $3 AND status IN ('open', 'reviewing')", [request.identity.id, request.body.targetType, request.body.targetId]);
     if (existing.rowCount) return reply.code(409).send({ error: "report_already_open" });
-    const result = await pool.query("INSERT INTO reports (reporter_id, target_type, target_id, reason, details) VALUES ($1, $2, $3, $4, $5) RETURNING id, target_type, target_id, reason, status, created_at", [request.identity.id, request.body.targetType, request.body.targetId, request.body.reason, request.body.details.trim()]);
-    return reply.code(201).send({ report: result.rows[0] });
+    try {
+      const result = await pool.query("INSERT INTO reports (reporter_id, target_type, target_id, reason, details) VALUES ($1, $2, $3, $4, $5) RETURNING id, target_type, target_id, reason, status, created_at", [request.identity.id, request.body.targetType, request.body.targetId, request.body.reason, request.body.details.trim()]);
+      return reply.code(201).send({ report: result.rows[0] });
+    } catch (error) {
+      if (error.code === "23505") return reply.code(409).send({ error: "report_already_open" });
+      throw error;
+    }
   });
 
   app.get("/api/admin/reports", { preHandler: [app.authenticate, async (request, reply) => { if (request.identity.role !== "admin") return reply.code(403).send({ error: "admin_required" }); }], schema: { querystring: { type: "object", additionalProperties: false, properties: { status: { type: "string", enum: ["open", "reviewing", "resolved", "dismissed"] }, limit: { type: "integer", minimum: 1, maximum: 100, default: 50 } } } } }, async (request) => {
