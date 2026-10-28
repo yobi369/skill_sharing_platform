@@ -17,6 +17,10 @@ test("real frontend has accessible auth, search, listing and request workflows",
   assert.match(html, /id="forgot-form"/);
   assert.match(html, /id="resend-verification-form"/);
   assert.match(html, /id="reset-form"/);
+  assert.match(html, /id="delete-account-form"/);
+  assert.match(html, /href=".\/privacy.html"/);
+  assert.match(html, /href=".\/terms.html"/);
+  assert.match(html, /href=".\/guidelines.html"/);
   assert.match(html, /id="report-form"/);
   assert.match(html, /id="notification-list"/);
   assert.match(html, /id="admin-report-list"/);
@@ -25,7 +29,7 @@ test("real frontend has accessible auth, search, listing and request workflows",
 });
 
 test("frontend calls the implemented API and uses a session-scoped bearer token", () => {
-  for (const endpoint of ["/api/auth/register", "/api/auth/login", "/api/auth/me", "/api/auth/verify-email", "/api/auth/forgot-password", "/api/auth/reset-password", "/api/auth/resend-verification", "/api/skills", "/api/skills/mine", "/api/requests", "/api/notifications", "/api/reports", "/api/admin/reports", "/health/ready"]) {
+  for (const endpoint of ["/api/auth/register", "/api/auth/login", "/api/auth/me", "/api/auth/verify-email", "/api/auth/forgot-password", "/api/auth/reset-password", "/api/auth/resend-verification", "/api/skills", "/api/skills/mine", "/api/requests", "/api/notifications", "/api/reports", "/api/admin/reports", "/api/account", "/health/ready"]) {
     assert.ok(app.includes(endpoint), `expected API endpoint ${endpoint}`);
   }
   assert.match(app, /sessionStorage\.setItem/);
