@@ -1,0 +1,52 @@
+# Delivery Roadmap
+
+This roadmap is an implementation plan, not a claim that these features already exist.
+
+## M0 — Make the prototype honest and maintainable
+
+- [x] Document the current repository and its demo-only behaviour.
+- [x] Define security expectations and a target architecture.
+- [ ] Label simulated balances, transaction history, and marketplace metrics in the UI.
+- [ ] Remove claims that imply real wallet connection, AI matching, blockchain writes, or live statistics unless integrated and verified.
+- [ ] Add browser-level smoke tests and accessibility checks.
+
+**Acceptance:** users can distinguish demo content from real account or network state; navigation and forms work without uncaught browser errors.
+
+## M1 — Core marketplace
+
+- [ ] Implement registration/login through a trusted identity system.
+- [ ] Add server-side profile and skill CRUD with ownership checks.
+- [ ] Add search, filters, pagination, and safe empty/error states.
+- [ ] Add skill requests with validated state transitions and notifications.
+- [ ] Add moderation/reporting and account suspension controls.
+- [ ] Add database migrations and automated integration tests.
+
+**Acceptance:** two independent test users can create listings and request exchanges; one user cannot read or modify another user's private records; data survives service restart.
+
+## M2 — Learning workflow and trust
+
+- [ ] Add session scheduling, cancellation, completion, and feedback.
+- [ ] Prevent duplicate or ineligible reviews.
+- [ ] Add abuse prevention, rate limits, audit trails, and privacy controls.
+- [ ] Add backup automation and demonstrate restore into a clean environment.
+
+**Acceptance:** key workflows pass automated tests; backup restoration is documented and repeatable; sensitive actions are auditable.
+
+## M3 — Operational readiness
+
+- [ ] CI runs formatting/lint, tests, dependency checks, and build checks on pull requests.
+- [ ] Add environment-specific configuration and secret handling.
+- [ ] Add health/readiness checks, structured logs, error monitoring, and rollback instructions.
+- [ ] Run accessibility, performance, and security reviews.
+- [ ] Publish deployment, incident response, and data deletion procedures.
+
+**Acceptance:** clean deployment from documented steps, passing required checks, verified restore, and no unresolved critical/high security findings.
+
+## M4 — Optional payments / Web3
+
+- [ ] Demonstrate a user need that requires payments or on-chain settlement.
+- [ ] Threat-model custody, key management, disputes, refunds, fees, and irreversible transactions.
+- [ ] Use a test network and independent smart-contract review before considering real funds.
+- [ ] Obtain appropriate legal/compliance review for target jurisdictions.
+
+**Acceptance:** no production funds are handled until contract, operational, legal, and recovery controls have been independently reviewed.
