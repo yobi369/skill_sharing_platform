@@ -30,6 +30,8 @@ test("sample activity does not use fake blockchain transaction hashes", () => {
   assert.doesNotMatch(html, /Payment successful!/i);
   assert.doesNotMatch(html, /Wallet Connected \| Balance:/);
   assert.doesNotMatch(html, /function generateTxHash\s*\(/);
+  assert.doesNotMatch(html, /AI-Powered Task Matching/i);
+  assert.doesNotMatch(html, /Decentralized Skill-Sharing Platform/i);
 });
 
 test("navigation buttons expose their selected state and target sections", () => {
@@ -41,6 +43,12 @@ test("navigation buttons expose their selected state and target sections", () =>
     assert.match(tag, /aria-controls="/);
     assert.match(tag, /showSection\('[^']+', this\)/);
   }
+});
+
+test("keyboard focus and reduced-motion preferences are supported", () => {
+  assert.match(html, /:focus-visible/);
+  assert.match(html, /prefers-reduced-motion: reduce/);
+  assert.match(html, /<noscript>/i);
 });
 
 test("all inline JavaScript parses without syntax errors", () => {
