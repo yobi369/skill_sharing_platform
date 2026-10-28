@@ -35,6 +35,18 @@ npm run migrate
 npm start
 ```
 
+### Run the API and PostgreSQL with Docker Compose
+
+```bash
+cp .env.example .env
+# Edit .env: replace JWT_SECRET and POSTGRES_PASSWORD with strong, unique values.
+# Keep DATABASE_URL's password in sync with POSTGRES_PASSWORD.
+docker compose up --build -d
+docker compose logs -f api
+```
+
+The Compose stack stores PostgreSQL data in a named volume and applies the schema on API startup. This is a local/self-managed setup, not a substitute for managed backups or a tested off-host restore. Back up the volume before upgrades and never expose the database port publicly. The API is published on `API_PORT` (default 3000).
+
 Use a strong, unique `JWT_SECRET` (at least 32 bytes) and a least-privilege database account. `CORS_ORIGINS` is deny-by-default when unset. Do not set `DATABASE_SSL=true` unless the database endpoint supports TLS with a trusted certificate. For local browser development, set `apiBaseUrl: "http://localhost:3000"` in `web/config.js`, then serve the repository with `python -m http.server 8000` and open `http://localhost:8000/web/`. Keep `CORS_ORIGINS` limited to the exact frontend origin. For production, set `apiBaseUrl` to the deployed API origin and configure the same frontend origin in the API's CORS allowlist.
 
 ## API surface
