@@ -1,0 +1,149 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#101827">
+  <meta name="description" content="Discover skills, publish what you can teach, and request peer-to-peer learning through SkillChain.">
+  <title>SkillChain — Skill-sharing marketplace</title>
+  <link rel="stylesheet" href="./styles.css">
+  <script src="./config.js" defer></script>
+  <script src="./app.js" defer></script>
+</head>
+<body>
+  <header class="site-header">
+    <a class="brand" href="#top" aria-label="SkillChain home"><span class="brand-mark" aria-hidden="true">S</span><span>SkillChain</span></a>
+    <nav aria-label="Main navigation">
+      <a href="#discover">Discover</a>
+      <a href="#workspace" id="workspace-link" hidden>My workspace</a>
+      <a href="../skill_sharing_platform.html">Prototype preview</a>
+    </nav>
+    <span id="connection-status" class="connection-status" role="status">Checking API…</span>
+  </header>
+
+  <main id="top" class="page-shell">
+    <section class="hero">
+      <p class="eyebrow">Learn together. Grow by sharing.</p>
+      <h1>Your next skill starts<br><span>with another person.</span></h1>
+      <p class="hero-copy">Find people who can teach what you want to learn, or publish a skill you are ready to share. Listings and requests are stored through the connected API.</p>
+      <a class="button button-primary" href="#discover">Explore skills <span aria-hidden="true">↓</span></a>
+      <div class="hero-note"><span class="status-dot" aria-hidden="true"></span> No crypto wallet or payment required. This app does not process payments.</div>
+    </section>
+
+    <section id="auth-panel" class="auth-panel panel" aria-labelledby="auth-heading">
+      <div class="section-heading compact">
+        <div><p class="eyebrow">Your account</p><h2 id="auth-heading">Sign in or join SkillChain</h2></div>
+        <p>Use a unique password of at least 12 characters.</p>
+      </div>
+      <div class="auth-grid">
+        <form id="login-form" class="form-card">
+          <h3>Welcome back</h3>
+          <label for="login-email">Email address</label>
+          <input id="login-email" name="email" type="email" autocomplete="email" maxlength="254" required>
+          <label for="login-password">Password</label>
+          <input id="login-password" name="password" type="password" autocomplete="current-password" minlength="12" maxlength="128" required>
+          <button class="button button-primary" type="submit">Sign in</button>
+        </form>
+        <form id="register-form" class="form-card">
+          <h3>Create an account</h3>
+          <label for="register-name">Display name</label>
+          <input id="register-name" name="name" type="text" autocomplete="name" minlength="2" maxlength="80" required>
+          <label for="register-email">Email address</label>
+          <input id="register-email" name="email" type="email" autocomplete="email" maxlength="254" required>
+          <label for="register-password">Password</label>
+          <input id="register-password" name="password" type="password" autocomplete="new-password" minlength="12" maxlength="128" required>
+          <button class="button button-secondary" type="submit">Create account</button>
+        </form>
+      </div>
+      <p id="auth-message" class="form-message" role="status" aria-live="polite"></p>
+    </section>
+
+    <section id="account-panel" class="account-panel panel" hidden aria-labelledby="account-heading">
+      <div><p class="eyebrow">Signed in</p><h2 id="account-heading">Your workspace</h2><p id="account-name" class="muted"></p></div>
+      <button id="signout-button" class="button button-quiet" type="button">Sign out</button>
+    </section>
+
+    <section id="discover" class="section-block">
+      <div class="section-heading">
+        <div><p class="eyebrow">Community knowledge</p><h2>Discover skills</h2></div>
+        <p>Search published listings from real registered members.</p>
+      </div>
+      <form id="search-form" class="search-bar">
+        <label class="visually-hidden" for="search-query">Search skills</label>
+        <input id="search-query" name="q" type="search" maxlength="100" placeholder="Try design, Python, writing…">
+        <label class="visually-hidden" for="search-category">Category</label>
+        <input id="search-category" name="category" type="text" maxlength="80" placeholder="Category">
+        <button class="button button-primary" type="submit">Search</button>
+      </form>
+      <p id="listing-message" class="form-message" role="status" aria-live="polite"></p>
+      <div id="skill-list" class="skill-grid" aria-live="polite" aria-busy="false"></div>
+      <div class="center-row"><button id="load-more" class="button button-quiet" type="button" hidden>Load more</button></div>
+    </section>
+
+    <section id="workspace" class="section-block" hidden>
+      <div class="section-heading">
+        <div><p class="eyebrow">Manage your activity</p><h2>My workspace</h2></div>
+        <p>Only your own listings can be edited or archived.</p>
+      </div>
+      <div class="workspace-grid">
+        <section class="panel" aria-labelledby="publish-heading">
+          <h3 id="publish-heading">Publish a skill</h3>
+          <form id="skill-form" class="stack-form">
+            <label for="skill-title">Skill title</label>
+            <input id="skill-title" name="title" minlength="3" maxlength="120" required>
+            <label for="skill-description">What can you teach?</label>
+            <textarea id="skill-description" name="description" minlength="10" maxlength="4000" rows="4" required></textarea>
+            <label for="skill-category">Category</label>
+            <input id="skill-category" name="category" minlength="2" maxlength="80" required>
+            <label for="skill-status">Visibility</label>
+            <select id="skill-status" name="status"><option value="published">Publish listing</option><option value="draft">Save as draft</option></select>
+            <button class="button button-primary" type="submit">Save skill</button>
+          </form>
+          <p id="skill-form-message" class="form-message" role="status" aria-live="polite"></p>
+        </section>
+        <section class="panel" aria-labelledby="mine-heading">
+          <h3 id="mine-heading">Your listings</h3>
+          <div id="my-skills" class="stack-list"></div>
+        </section>
+      </div>
+      <section class="panel requests-panel" aria-labelledby="requests-heading">
+        <h3 id="requests-heading">Skill exchange requests</h3>
+        <div id="request-list" class="stack-list"></div>
+      </section>
+    </section>
+
+    <section class="trust-strip">
+      <div><span class="trust-icon" aria-hidden="true">01</span><h3>People first</h3><p>Build useful learning relationships without speculative tokens.</p></div>
+      <div><span class="trust-icon" aria-hidden="true">02</span><h3>Clear ownership</h3><p>The API checks account access before changing a listing.</p></div>
+      <div><span class="trust-icon" aria-hidden="true">03</span><h3>Honest by design</h3><p>No fabricated reviews, balances, payments, or completed sessions.</p></div>
+    </section>
+  </main>
+
+  <dialog id="request-dialog" class="dialog">
+    <form id="request-form" method="dialog" class="stack-form">
+      <div class="dialog-heading"><div><p class="eyebrow">Start a conversation</p><h2 id="request-dialog-title">Request to learn</h2></div><button type="button" class="icon-button" data-close-dialog="request-dialog" aria-label="Close request form">×</button></div>
+      <p id="request-skill-name" class="muted"></p>
+      <label for="request-message">What would you like to learn?</label>
+      <textarea id="request-message" name="message" minlength="10" maxlength="2000" rows="4" required></textarea>
+      <p id="request-message-status" class="form-message" role="status" aria-live="polite"></p>
+      <div class="button-row"><button type="button" class="button button-quiet" data-close-dialog="request-dialog">Cancel</button><button type="submit" class="button button-primary">Send request</button></div>
+    </form>
+  </dialog>
+
+  <dialog id="edit-dialog" class="dialog">
+    <form id="edit-form" method="dialog" class="stack-form">
+      <div class="dialog-heading"><div><p class="eyebrow">Your listing</p><h2>Edit skill</h2></div><button type="button" class="icon-button" data-close-dialog="edit-dialog" aria-label="Close edit form">×</button></div>
+      <input id="edit-skill-id" type="hidden">
+      <label for="edit-title">Title</label><input id="edit-title" minlength="3" maxlength="120" required>
+      <label for="edit-description">Description</label><textarea id="edit-description" minlength="10" maxlength="4000" rows="4" required></textarea>
+      <label for="edit-category">Category</label><input id="edit-category" minlength="2" maxlength="80" required>
+      <label for="edit-status">Status</label><select id="edit-status"><option value="published">Published</option><option value="draft">Draft</option><option value="archived">Archived</option></select>
+      <p id="edit-message" class="form-message" role="status" aria-live="polite"></p>
+      <div class="button-row"><button type="button" class="button button-quiet" data-close-dialog="edit-dialog">Cancel</button><button type="submit" class="button button-primary">Save changes</button></div>
+    </form>
+  </dialog>
+
+  <footer class="site-footer"><span>SkillChain</span><span>Skill-sharing prototype connected to the configured API. No payments or blockchain transactions.</span></footer>
+  <div id="global-message" class="global-message" role="status" aria-live="polite"></div>
+</body>
+</html>
