@@ -153,8 +153,12 @@ function setSignedIn(user) {
   byId("account-name").textContent = user ? `${user.name} · ${user.email}` : "";
   if (user) {
     byId("account-heading").textContent = `Welcome, ${user.name}`;
+    byId("admin-panel").hidden = user.role !== "admin";
     void loadWorkspace();
+    void loadNotifications();
+    if (user.role === "admin") void loadAdminReports();
   } else {
+    byId("admin-panel").hidden = true;
     state.mySkills = [];
     state.requests = [];
     byId("my-skills").replaceChildren();
@@ -453,6 +457,97 @@ async function updateRequest(id, status) {
   } catch (error) { notify(error.message); }
 }
 
+function openReport(targetType, targetId) {
+  if (!state.user) {
+    byId("auth-panel").scrollIntoView({ behavior: "smooth", block: "center" });
+    setMessage(byId("auth-message"), "Sign in to report unsafe or misleading content.");
+    return;
+  }
+  byId("report-target-type").value = targetType;
+  byId("report-target-id").value = targetId;
+  byId("report-details").value = "";
+  setMessage(byId("report-message"), "");
+  byId("report-dialog").showModal();
+}
+
+byId("report-form").addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const message = byId("report-message");
+  setMessage(message, "Submitting report…");
+  try {
+    await api("/api/reports", { method: "POST", body: {
+      targetType: byId("report-target-type").value,
+      targetId: byId("report-target-id").value,
+      reason: byId("report-reason").value,
+      details: byId("report-details").value.trim()
+    }});
+    byId("report-dialog").close();
+    notify("Report submitted for moderation.");
+  } catch (error) { setMessage(message, error.message, "error"); }
+});
+
+async function loadNotifications() {
+  const container = byId("notification-list");
+  try {
+    const result = await api("/api/notifications");
+    container.replaceChildren();
+    if (!result.items.length) { emptyState(container, "You're all caught up. New requests and updates will appear here."); return; }
+    for (const item of result.items) {
+      const row = makeElement("article", "list-item");
+      row.append(makeElement("h4", "", item.title));
+      row.append(makeElement("p", "", item.body));
+      row.append(makeElement("p", "muted", formatDate(item.created_at) + (item.read_at ? " · Read" : " · Unread")));
+      if (!item.read_at) row.append(makeButton("Mark as read", "button-quiet", async () => {
+        try { await api("/api/notifications/" + encodeURIComponent(item.id) + "/read", { method: "PATCH", body: {} }); await loadNotifications(); }
+        catch (error) { notify(error.message); }
+      }));
+      container.append(row);
+    }
+  } catch (error) { emptyState(container, error.message); }
+}
+
+async function loadAdminReports() {
+  if (state.user?.role !== "admin") return;
+  const container = byId("admin-report-list");
+  try {
+    const result = await api("/api/admin/reports?status=" + encodeURIComponent(byId("report-filter").value));
+    container.replaceChildren();
+    if (!result.items.length) { emptyState(container, "No reports in this queue."); return; }
+    for (const report of result.items) {
+      const row = makeElement("article", "list-item");
+      row.append(makeElement("h4", "", report.reason + " · " + report.target_type));
+      row.append(makeElement("p", "", report.details));
+      row.append(makeElement("p", "muted", "Reported by " + report.reporter_name + " · " + formatDate(report.created_at)));
+      const note = document.createElement("textarea");
+      note.maxLength = 2000;
+      note.rows = 2;
+      note.placeholder = "Optional moderator note";
+      note.setAttribute("aria-label", "Moderator note for report " + report.id);
+      row.append(note);
+      const actions = makeElement("div", "item-actions");
+      for (const action of [
+        { label: "Review", status: "reviewing", suspend: false },
+        { label: "Resolve", status: "resolved", suspend: false },
+        { label: "Dismiss", status: "dismissed", suspend: false },
+        { label: "Resolve & suspend/archive", status: "resolved", suspend: true }
+      ]) actions.append(makeButton(action.label, "button-quiet", async () => {
+        if (action.suspend && !window.confirm("Suspend this reported user or archive this reported skill?")) return;
+        try {
+          await api("/api/admin/reports/" + encodeURIComponent(report.id), { method: "PATCH", body: { status: action.status, note: note.value.trim(), suspendTarget: action.suspend } });
+          notify("Moderation action saved.");
+          await loadAdminReports();
+        } catch (error) { notify(error.message); }
+      }));
+      row.append(actions);
+      container.append(row);
+    }
+  } catch (error) { emptyState(container, error.message); }
+}
+
+byId("refresh-notifications").addEventListener("click", () => void loadNotifications());
+byId("refresh-reports").addEventListener("click", () => void loadAdminReports());
+byId("report-filter").addEventListener("change", () => void loadAdminReports());
+
 async function checkConnection() {
   const status = byId("connection-status");
   try {
@@ -468,6 +563,22 @@ async function checkConnection() {
 }
 
 async function init() {
+  const url = new URL(window.location.href);
+  const verificationToken = url.searchParams.get("verify");
+  const resetToken = url.searchParams.get("reset");
+  if (resetToken) {
+    byId("reset-token").value = resetToken;
+    byId("reset-form").hidden = false;
+    byId("reset-form").scrollIntoView({ behavior: "smooth", block: "center" });
+  }
+  if (verificationToken) {
+    try {
+      const result = await api("/api/auth/verify-email", { method: "POST", body: { token: verificationToken } });
+      setMessage(byId("auth-message"), result.message, "success");
+    } catch (error) { setMessage(byId("auth-message"), error.message, "error"); }
+    url.searchParams.delete("verify");
+    window.history.replaceState({}, "", url);
+  }
   await checkConnection();
   if (state.token) {
     try {
