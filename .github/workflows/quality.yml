@@ -54,6 +54,9 @@ jobs:
           test -s docs/ROADMAP.md
           test -s CONTRIBUTING.md
           test -s package.json
+          test -s Dockerfile
+          test -s .dockerignore
+          test -s .env.example
           test -s db/schema.sql
           test -s src/server.js
           test -s tests/api.integration.test.js
@@ -79,6 +82,9 @@ jobs:
 
       - name: Run prototype and API integration tests
         run: npm test
+
+      - name: Build production API container
+        run: docker build --tag skillchain-api:ci .
 
       - name: Check for obvious committed secret patterns
         shell: bash
