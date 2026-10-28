@@ -6,6 +6,14 @@ The repository currently contains a single HTML file with embedded CSS and JavaS
 
 Those simulations are not connected to real services and must not be interpreted as proof of a transaction, identity, payment, or network activity.
 
+## Current API implementation (feature branch)
+
+The API milestone adds a Node.js 20+ Fastify service and PostgreSQL schema in `src/server.js` and `db/schema.sql`. Implemented endpoints cover registration/login, current-user lookup, public skill discovery, authenticated skill CRUD, exchange requests, request status transitions, and liveness/readiness checks. Passwords are hashed with bcrypt; bearer tokens expire after one hour; request bodies are schema-validated; auth endpoints have tighter rate limits; SQL queries are parameterized; and skill changes require owner identity. Request transitions are constrained to pending -> accepted/declined by the provider or pending -> cancelled by the requester.
+
+Run `npm install`, configure `DATABASE_URL` and a `JWT_SECRET` of at least 32 bytes, then run `npm run migrate` and `npm start`. Set `DATABASE_SSL=true` for a TLS PostgreSQL connection where required. The API integration test uses a real PostgreSQL database and is skipped when `DATABASE_URL` is absent.
+
+This is a functional API milestone, not a production launch: the standalone HTML UI is not yet wired to the API; deployment, real backup/restore, external security review, moderation/reporting, notifications, account recovery, email verification, and privacy/data-retention decisions remain open. Configure TLS at the hosting edge, rotate secrets, and use managed database backups before handling real users.
+
 ## Recommended target architecture
 
 Keep the first production milestone deliberately small:
