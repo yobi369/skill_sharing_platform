@@ -42,7 +42,11 @@ async function api(path, options = {}) {
       invalid_credentials: "Email or password is incorrect.",
       email_already_registered: "An account already uses that email.",
       skill_not_found: "That skill listing is no longer available.",
-      cannot_request_own_skill: "You cannot request your own skill."
+      cannot_request_own_skill: "You cannot request your own skill.",
+      email_not_verified: "Verify your email address before signing in.",
+      verification_token_invalid_or_expired: "That verification link has expired or has already been used.",
+      reset_token_invalid_or_expired: "That password-reset link has expired or has already been used.",
+      email_delivery_not_configured: "Email delivery is not configured on this server. Contact the site administrator."
     };
     const key = data.error;
     throw new Error(messages[key] ?? data.message ?? key ?? `Request failed (${response.status}).`);
@@ -260,6 +264,27 @@ byId("reset-form").addEventListener("submit", async (event) => {
     const url = new URL(window.location.href);
     url.searchParams.delete("reset");
     window.history.replaceState({}, "", url);
+  } catch (error) { setMessage(message, error.message, "error"); }
+});
+
+byId("delete-account-open").addEventListener("click", () => {
+  byId("delete-account-password").value = "";
+  setMessage(byId("delete-account-message"), "");
+  byId("delete-account-dialog").showModal();
+});
+
+byId("delete-account-form").addEventListener("submit", async (event) => {
+  event.preventDefault();
+  if (!window.confirm("Permanently delete this account and its listings? This cannot be undone.")) return;
+  const message = byId("delete-account-message");
+  setMessage(message, "Deleting account…");
+  try {
+    await api("/api/account", { method: "DELETE", body: { password: byId("delete-account-password").value } });
+    byId("delete-account-dialog").close();
+    state.token = null;
+    sessionStorage.removeItem(TOKEN_KEY);
+    setSignedIn(null);
+    setMessage(byId("auth-message"), "Your account was deleted.", "success");
   } catch (error) { setMessage(message, error.message, "error"); }
 });
 
