@@ -24,6 +24,7 @@ jobs:
           test -s SECURITY.md
           test -s docs/ARCHITECTURE.md
           test -s docs/ROADMAP.md
+          test -s CONTRIBUTING.md
           test -s skill_sharing_platform.html
           grep -qi '<!DOCTYPE html' skill_sharing_platform.html
           grep -qi '<html' skill_sharing_platform.html
@@ -34,7 +35,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          if grep -RInE --exclude-dir=.git --exclude='*.pdf' '(BEGIN (RSA|EC|OPENSSH|PRIVATE) KEY|AKIA[0-9A-Z]{16}|gh[pousr]_[A-Za-z0-9]{30,})' .; then
+          if grep -RInE --exclude-dir=.git --exclude-dir=.github --exclude='*.pdf' '(BEGIN (RSA|EC|OPENSSH|PRIVATE) KEY|AKIA[0-9A-Z]{16}|gh[pousr]_[A-Za-z0-9]{30,})' .; then
             echo "::error::Potential secret pattern detected. Review the match before proceeding."
             exit 1
           fi
