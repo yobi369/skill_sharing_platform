@@ -20,6 +20,7 @@ test("API integration: registration, authentication, ownership and request workf
   const emailB = `learner-${suffix}@example.test`;
   let userA;
   let userB;
+  let userC;
   try {
     await pool.query(await readFile(new URL("../db/schema.sql", import.meta.url), "utf8"));
     await app.ready();
@@ -147,9 +148,20 @@ test("API integration: registration, authentication, ownership and request workf
     await pool.query("UPDATE users SET status = 'suspended' WHERE id = $1", [userA.id]);
     const suspendedToken = await app.inject({ method: "GET", url: "/api/skills/mine", headers: { authorization: `Bearer ${tokenAAfterReset}` } });
     assert.equal(suspendedToken.statusCode, 401);
+    const registerC = await app.inject({ method: "POST", url: "/api/auth/register", payload: { name: "Delete Me", email: `delete-${suffix}@example.test`, password: "Strong-passphrase-C3!" } });
+    assert.equal(registerC.statusCode, 201, registerC.body);
+    userC = registerC.json().user;
+    const tokenC = registerC.json().token;
+    const badDelete = await app.inject({ method: "DELETE", url: "/api/account", headers: { authorization: `Bearer ${tokenC}` }, payload: { password: "wrong-password" } });
+    assert.equal(badDelete.statusCode, 401);
+    const deleteAccount = await app.inject({ method: "DELETE", url: "/api/account", headers: { authorization: `Bearer ${tokenC}` }, payload: { password: "Strong-passphrase-C3!" } });
+    assert.equal(deleteAccount.statusCode, 204, deleteAccount.body);
+    const deletedSession = await app.inject({ method: "GET", url: "/api/skills/mine", headers: { authorization: `Bearer ${tokenC}` } });
+    assert.equal(deletedSession.statusCode, 401);
   } finally {
     if (userA?.id) await pool.query("DELETE FROM users WHERE id = $1", [userA.id]).catch(() => {});
     if (userB?.id) await pool.query("DELETE FROM users WHERE id = $1", [userB.id]).catch(() => {});
+    if (userC?.id) await pool.query("DELETE FROM users WHERE id = $1", [userC.id]).catch(() => {});
     await app.close();
     await pool.end();
   }
