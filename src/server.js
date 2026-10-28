@@ -53,8 +53,9 @@ export function buildApp({ pool: suppliedPool, jwtSecret = process.env.JWT_SECRE
       return reply.code(401).send({ error: "unauthorized" });
     }
     if (!request.user?.sub) return reply.code(401).send({ error: "unauthorized" });
-    const activeUser = await pool.query("SELECT id, name, email, role FROM users WHERE id = $1 AND status = 'active'", [request.user.sub]);
+    const activeUser = await pool.query("SELECT id, name, email, role, token_version FROM users WHERE id = $1 AND status = 'active'", [request.user.sub]);
     if (!activeUser.rowCount) return reply.code(401).send({ error: "unauthorized" });
+    if (request.user.ver !== activeUser.rows[0].token_version) return reply.code(401).send({ error: "unauthorized" });
     request.identity = { id: activeUser.rows[0].id, name: activeUser.rows[0].name, email: activeUser.rows[0].email, role: activeUser.rows[0].role };
   });
   app.addHook("onClose", async () => { if (ownsPool) await pool.end(); });
@@ -139,7 +140,7 @@ export function buildApp({ pool: suppliedPool, jwtSecret = process.env.JWT_SECRE
       if (!result.rowCount) { await client.query("ROLLBACK"); return reply.code(400).send({ error: "reset_token_invalid_or_expired" }); }
       const userId = result.rows[0].user_id;
       const passwordHash = await bcrypt.hash(request.body.password, 12);
-      await client.query("UPDATE users SET password_hash = $1, updated_at = now() WHERE id = $2", [passwordHash, userId]);
+      await client.query("UPDATE users SET password_hash = $1, token_version = token_version + 1, updated_at = now() WHERE id = $2", [passwordHash, userId]);
       await client.query("DELETE FROM password_reset_tokens WHERE user_id = $1", [userId]);
       await client.query("COMMIT");
       return { message: "Password updated. Please sign in with your new password." };
@@ -172,7 +173,7 @@ export function buildApp({ pool: suppliedPool, jwtSecret = process.env.JWT_SECRE
       if (mailer) await sendAccountEmail(user.email, "Verify your SkillChain email", "Hello " + user.name + ", verify your email within 24 hours: " + verificationUrl);
       else if (process.env.NODE_ENV !== "production") request.log.info({ verificationUrl }, "Development email verification link");
       const requireVerification = process.env.REQUIRE_EMAIL_VERIFICATION === "true";
-      const token = requireVerification ? null : app.jwt.sign({ sub: user.id, email: user.email });
+      const token = requireVerification ? null : app.jwt.sign({ sub: user.id, email: user.email, ver: user.token_version });
       return reply.code(201).send({ user: { ...user, email_verified: false }, ...(token ? { token } : {}), verificationRequired: requireVerification, ...(!mailer && process.env.NODE_ENV !== "production" ? { verificationUrl } : {}) });
     } catch (error) {
       if (error.code === "23505") return reply.code(409).send({ error: "email_already_registered" });
@@ -187,7 +188,7 @@ export function buildApp({ pool: suppliedPool, jwtSecret = process.env.JWT_SECRE
       password: { type: "string", minLength: 1, maxLength: 128 }
     } } }
   }, async (request, reply) => {
-    const result = await pool.query("SELECT id, name, email, password_hash FROM users WHERE email = $1 AND status = 'active'", [request.body.email.trim().toLowerCase()]);
+    const result = await pool.query("SELECT id, name, email, password_hash, email_verified, role, token_version FROM users WHERE email = $1 AND status = 'active'", [request.body.email.trim().toLowerCase()]);
     const user = result.rows[0];
     const valid = user ? await bcrypt.compare(request.body.password, user.password_hash) : false;
     if (!valid) return reply.code(401).send({ error: "invalid_credentials" });
