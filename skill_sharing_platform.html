@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SkillChain - Decentralized Skill-Sharing Platform</title>
+    <title>SkillChain — Skill-Sharing Marketplace Prototype</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
     <style>
         * {
@@ -85,6 +85,12 @@
             background: rgba(255, 193, 7, 0.10); color: #ffe7a3; line-height: 1.55;
         }
         .demo-notice strong { color: #fff0bd; }
+
+        :focus-visible { outline: 3px solid #ffd166; outline-offset: 3px; }
+
+        @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; scroll-behavior: auto !important; transition-duration: 0.01ms !important; }
+        }
         .wallet-status {
             display: inline-flex;
             align-items: center;
@@ -402,10 +408,11 @@
     <div class="stars" id="stars"></div>
     <div class="floating-particles" id="particles"></div>
     
+    <noscript><div class="demo-notice">JavaScript is required for this interactive prototype. No live account or payment service is available.</div></noscript>
     <div class="container">
         <div class="header">
             <div class="logo">⛓️ SkillChain</div>
-            <div class="tagline">Decentralized Skill-Sharing Platform</div>
+            <div class="tagline">Peer-to-peer skill-sharing marketplace prototype</div>
             <div class="wallet-status" role="status" aria-label="Demo wallet status">
                 <div class="wallet-indicator" style="background:#ffc107"></div>
                 <span>Demo mode · No wallet connected · No real funds</span>
@@ -660,12 +667,12 @@
         <!-- Browse Tasks Section -->
         <div id="browse-tasks" class="section">
             <div class="card">
-                <h3>🔍 AI-Powered Task Matching</h3>
+                <h3>🔍 Sample Task Match Preview</h3>
                 <div class="form-group">
                     <label>Your Skills</label>
                     <input type="text" class="form-control" id="userSkills" placeholder="e.g., JavaScript, React, Node.js" value="JavaScript, React, Blockchain">
                 </div>
-                <button class="btn btn-primary" onclick="findMatches()">Find Perfect Matches</button>
+                <button class="btn btn-primary" onclick="findMatches()">Preview Sample Matches</button>
             </div>
 
             <div id="taskResults">
