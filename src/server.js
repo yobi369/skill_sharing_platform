@@ -162,7 +162,7 @@ export function buildApp({ pool: suppliedPool, jwtSecret = process.env.JWT_SECRE
         return reply.code(400).send({ error: "validation_error", message: `${updates[index]} contains too few non-space characters.` });
       }
     }
-    const sets = updates.map((key, index) => `${key} = ${index + 3}`);
+    const sets = updates.map((key, index) => `${key} = $${index + 3}`);
     const result = await pool.query(
       `UPDATE skills SET ${sets.join(", ")}, updated_at = now() WHERE id = $1 AND owner_id = $2 RETURNING id, owner_id, title, description, category, status, created_at, updated_at`,
       [request.params.id, request.identity.id, ...values]
