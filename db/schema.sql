@@ -41,7 +41,12 @@ CREATE INDEX IF NOT EXISTS requests_provider_created_idx ON skill_requests (prov
 -- Additive product tables: safe to apply to existing installations.
 ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verified boolean NOT NULL DEFAULT false;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS role varchar(16) NOT NULL DEFAULT 'member';
-ALTER TABLE users ADD CONSTRAINT users_role_valid CHECK (role IN ('member', 'admin')) NOT VALID;
+DO $
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'users_role_valid') THEN
+    ALTER TABLE users ADD CONSTRAINT users_role_valid CHECK (role IN ('member', 'admin')) NOT VALID;
+  END IF;
+END $;
 ALTER TABLE users VALIDATE CONSTRAINT users_role_valid;
 
 CREATE TABLE IF NOT EXISTS email_verification_tokens (
