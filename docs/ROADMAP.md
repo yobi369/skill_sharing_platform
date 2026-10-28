@@ -17,7 +17,9 @@ This roadmap is an implementation plan, not a claim that these features already 
 - [x] Implement registration/login with password hashing, expiring bearer tokens, and an API-connected frontend.
 - [x] Add server-side skill CRUD with ownership checks and a frontend listing editor.
 - [x] Add search, category filters, pagination, and safe empty/error states in the API-connected frontend.
-- [x] Add skill requests with validated state transitions and a frontend request workflow.\n- [x] Add persistent in-app notifications for exchange-request activity.\n- [ ] Add outbound email/push delivery for notifications (in-app notifications are implemented; push is not).
+- [x] Add skill requests with validated state transitions and a frontend request workflow.
+- [x] Add persistent in-app notifications for exchange-request activity.
+- [ ] Add outbound email/push delivery for notifications (in-app notifications are implemented; push is not).
 - [x] Add moderation/reporting and account suspension controls.
 - [x] Add database schema migrations and automated PostgreSQL integration tests.
 
