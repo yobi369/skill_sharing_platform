@@ -92,7 +92,7 @@ export function buildApp({ pool: suppliedPool, jwtSecret = process.env.JWT_SECRE
       password: { type: "string", minLength: 1, maxLength: 128 }
     } } }
   }, async (request, reply) => {
-    const result = await pool.query("SELECT id, name, email, password_hash FROM users WHERE email = $1", [request.body.email.trim().toLowerCase()]);
+    const result = await pool.query("SELECT id, name, email, password_hash FROM users WHERE email = $1 AND status = 'active'", [request.body.email.trim().toLowerCase()]);
     const user = result.rows[0];
     const valid = user ? await bcrypt.compare(request.body.password, user.password_hash) : false;
     if (!valid) return reply.code(401).send({ error: "invalid_credentials" });
