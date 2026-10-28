@@ -14,17 +14,26 @@ test("real frontend has accessible auth, search, listing and request workflows",
   assert.match(html, /id="skill-form"/);
   assert.match(html, /id="request-form"/);
   assert.match(html, /id="edit-form"/);
+  assert.match(html, /id="forgot-form"/);
+  assert.match(html, /id="resend-verification-form"/);
+  assert.match(html, /id="reset-form"/);
+  assert.match(html, /id="report-form"/);
+  assert.match(html, /id="notification-list"/);
+  assert.match(html, /id="admin-report-list"/);
   assert.match(html, /aria-live="polite"/);
   assert.match(html, /Prototype preview/);
 });
 
 test("frontend calls the implemented API and uses a session-scoped bearer token", () => {
-  for (const endpoint of ["/api/auth/register", "/api/auth/login", "/api/auth/me", "/api/skills", "/api/skills/mine", "/api/requests", "/health/ready"]) {
+  for (const endpoint of ["/api/auth/register", "/api/auth/login", "/api/auth/me", "/api/auth/verify-email", "/api/auth/forgot-password", "/api/auth/reset-password", "/api/auth/resend-verification", "/api/skills", "/api/skills/mine", "/api/requests", "/api/notifications", "/api/reports", "/api/admin/reports", "/health/ready"]) {
     assert.ok(app.includes(endpoint), `expected API endpoint ${endpoint}`);
   }
   assert.match(app, /sessionStorage\.setItem/);
   assert.match(app, /sessionStorage\.removeItem/);
   assert.match(app, /credentials:\s*"omit"/);
+  assert.match(app, /function loadNotifications/);
+  assert.match(app, /function loadAdminReports/);
+  assert.match(app, /function openReport/);
   assert.match(config, /apiBaseUrl/);
 });
 
