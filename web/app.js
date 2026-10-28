@@ -106,6 +106,7 @@ function renderSkills(items, append = false) {
     if (state.user && skill.owner_id !== state.user.id) {
       card.append(makeButton("Request to learn", "button-primary", () => openRequest(skill)));
       card.append(makeButton("Report listing", "button-quiet", () => openReport("skill", skill.id)));
+      card.append(makeButton("Report member", "button-quiet", () => openReport("user", skill.owner_id)));
     } else if (!state.user) {
       card.append(makeButton("Sign in to request", "button-secondary", () => {
         byId("auth-panel").scrollIntoView({ behavior: "smooth", block: "center" });
