@@ -155,6 +155,7 @@ export function buildApp({ pool: suppliedPool, jwtSecret = process.env.JWT_SECRE
       password: { type: "string", minLength: 12, maxLength: 128 }
     } } }
   }, async (request, reply) => {
+    if (process.env.REQUIRE_EMAIL_VERIFICATION === "true" && !mailer) return reply.code(503).send({ error: "email_delivery_not_configured" });
     const name = request.body.name.trim();
     const email = request.body.email.trim().toLowerCase();
     if (name.length < 2) return reply.code(400).send({ error: "validation_error", message: "Name must contain at least two non-space characters." });
@@ -165,8 +166,14 @@ export function buildApp({ pool: suppliedPool, jwtSecret = process.env.JWT_SECRE
         [name, email, passwordHash]
       );
       const user = result.rows[0];
-      const token = app.jwt.sign({ sub: user.id, email: user.email });
-      return reply.code(201).send({ user, token });
+      const verificationToken = newToken();
+      await pool.query("INSERT INTO email_verification_tokens (user_id, token_hash, expires_at) VALUES ($1, $2, now() + interval '24 hours')", [user.id, hashToken(verificationToken)]);
+      const verificationUrl = frontendUrl + "/?verify=" + encodeURIComponent(verificationToken);
+      if (mailer) await sendAccountEmail(user.email, "Verify your SkillChain email", "Hello " + user.name + ", verify your email within 24 hours: " + verificationUrl);
+      else if (process.env.NODE_ENV !== "production") request.log.info({ verificationUrl }, "Development email verification link");
+      const requireVerification = process.env.REQUIRE_EMAIL_VERIFICATION === "true";
+      const token = requireVerification ? null : app.jwt.sign({ sub: user.id, email: user.email });
+      return reply.code(201).send({ user: { ...user, email_verified: false }, ...(token ? { token } : {}), verificationRequired: requireVerification, ...(!mailer && process.env.NODE_ENV !== "production" ? { verificationUrl } : {}) });
     } catch (error) {
       if (error.code === "23505") return reply.code(409).send({ error: "email_already_registered" });
       throw error;
@@ -184,12 +191,13 @@ export function buildApp({ pool: suppliedPool, jwtSecret = process.env.JWT_SECRE
     const user = result.rows[0];
     const valid = user ? await bcrypt.compare(request.body.password, user.password_hash) : false;
     if (!valid) return reply.code(401).send({ error: "invalid_credentials" });
+    if (process.env.REQUIRE_EMAIL_VERIFICATION === "true" && !user.email_verified) return reply.code(403).send({ error: "email_not_verified" });
     const token = app.jwt.sign({ sub: user.id, email: user.email });
-    return { user: { id: user.id, name: user.name, email: user.email }, token };
+    return { user: { id: user.id, name: user.name, email: user.email, email_verified: user.email_verified, role: user.role }, token };
   });
 
   app.get("/api/auth/me", { preHandler: app.authenticate }, async (request, reply) => {
-    const result = await pool.query("SELECT id, name, email, created_at FROM users WHERE id = $1 AND status = 'active'", [request.identity.id]);
+    const result = await pool.query("SELECT id, name, email, email_verified, role, created_at FROM users WHERE id = $1 AND status = 'active'", [request.identity.id]);
     if (!result.rowCount) return reply.code(401).send({ error: "unauthorized" });
     return { user: result.rows[0] };
   });
