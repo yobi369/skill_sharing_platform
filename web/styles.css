@@ -140,3 +140,14 @@ textarea { resize: vertical; }
 .legal-page ul { padding-left: 1.4rem; }
 .legal-page li { margin: .5rem 0; }
 .site-footer nav { display: flex; flex-wrap: wrap; gap: 1rem; }
+
+
+/* Keep unavailable controls visibly inactive in a static-only preview. */
+.api-not-configured form input:disabled,
+.api-not-configured form textarea:disabled,
+.api-not-configured form select:disabled,
+.api-not-configured form button:disabled,
+.api-not-configured button:disabled {
+  cursor: not-allowed;
+  opacity: 0.58;
+}
