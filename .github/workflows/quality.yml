@@ -69,6 +69,7 @@ jobs:
           test -s tests/prototype-contract.test.cjs
           test -s scripts/check-inline-scripts.cjs
           test -s scripts/migrate.js
+          test -s scripts/promote-admin.js
           test -s skill_sharing_platform.html
           grep -qi '<!DOCTYPE html' skill_sharing_platform.html
           grep -qi '<html' skill_sharing_platform.html
