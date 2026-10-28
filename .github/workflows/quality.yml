@@ -57,6 +57,11 @@ jobs:
           test -s db/schema.sql
           test -s src/server.js
           test -s tests/api.integration.test.js
+          test -s tests/web-contract.test.cjs
+          test -s web/index.html
+          test -s web/app.js
+          test -s web/styles.css
+          test -s web/config.js
           test -s tests/prototype-contract.test.cjs
           test -s scripts/check-inline-scripts.cjs
           test -s scripts/migrate.js
