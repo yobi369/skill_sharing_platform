@@ -105,6 +105,7 @@ function renderSkills(items, append = false) {
     card.append(meta, title, description, date);
     if (state.user && skill.owner_id !== state.user.id) {
       card.append(makeButton("Request to learn", "button-primary", () => openRequest(skill)));
+      card.append(makeButton("Report listing", "button-quiet", () => openReport("skill", skill.id)));
     } else if (!state.user) {
       card.append(makeButton("Sign in to request", "button-secondary", () => {
         byId("auth-panel").scrollIntoView({ behavior: "smooth", block: "center" });
@@ -162,11 +163,31 @@ function setSignedIn(user) {
   void loadSkills({ reset: true });
 }
 
+function setLinkMessage(element, message, url, label) {
+  element.replaceChildren(document.createTextNode(message + " "));
+  if (url) {
+    const link = document.createElement("a");
+    link.href = url;
+    link.textContent = label;
+    link.rel = "noopener noreferrer";
+    element.append(link);
+  }
+}
+
 async function establishSession(result, messageNode) {
+  if (result.verificationRequired && !result.token) {
+    setMessage(messageNode, "Account created. Check your email to verify the address before signing in.", "success");
+    return;
+  }
+  if (!result.token) {
+    setMessage(messageNode, result.message ?? "Check your email for the next step.", "success");
+    return;
+  }
   state.token = result.token;
   sessionStorage.setItem(TOKEN_KEY, result.token);
   setSignedIn(result.user);
   setMessage(messageNode, "You're signed in.", "success");
+  if (result.verificationUrl) setLinkMessage(messageNode, "Development account created. Verify your email:", result.verificationUrl, "Verify email");
   notify(`Welcome, ${result.user.name}.`);
 }
 
@@ -193,6 +214,47 @@ byId("register-form").addEventListener("submit", async (event) => {
     const result = await api("/api/auth/register", { method: "POST", body: data });
     await establishSession(result, message);
     form.reset();
+  } catch (error) { setMessage(message, error.message, "error"); }
+});
+
+byId("forgot-form").addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const form = event.currentTarget;
+  const message = byId("auth-message");
+  setMessage(message, "Requesting password reset…");
+  try {
+    const result = await api("/api/auth/forgot-password", { method: "POST", body: Object.fromEntries(new FormData(form)) });
+    setMessage(message, result.message, "success");
+    if (result.developmentUrl) setLinkMessage(message, result.message, result.developmentUrl, "Open reset link");
+    form.reset();
+  } catch (error) { setMessage(message, error.message, "error"); }
+});
+
+byId("resend-verification-form").addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const form = event.currentTarget;
+  const message = byId("auth-message");
+  setMessage(message, "Requesting verification email…");
+  try {
+    const result = await api("/api/auth/resend-verification", { method: "POST", body: Object.fromEntries(new FormData(form)) });
+    setMessage(message, result.message, "success");
+    form.reset();
+  } catch (error) { setMessage(message, error.message, "error"); }
+});
+
+byId("reset-form").addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const form = event.currentTarget;
+  const message = byId("auth-message");
+  setMessage(message, "Updating password…");
+  try {
+    const result = await api("/api/auth/reset-password", { method: "POST", body: Object.fromEntries(new FormData(form)) });
+    setMessage(message, result.message, "success");
+    form.reset();
+    form.hidden = true;
+    const url = new URL(window.location.href);
+    url.searchParams.delete("reset");
+    window.history.replaceState({}, "", url);
   } catch (error) { setMessage(message, error.message, "error"); }
 });
 
