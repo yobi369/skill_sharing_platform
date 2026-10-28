@@ -73,6 +73,80 @@ export function buildApp({ pool: suppliedPool, jwtSecret = process.env.JWT_SECRE
     catch { return reply.code(503).send({ status: "unavailable" }); }
   });
 
+
+  app.post("/api/auth/verify-email", {
+    config: { rateLimit: { max: 10, timeWindow: "1 minute" } },
+    schema: { body: { type: "object", additionalProperties: false, required: ["token"], properties: { token: { type: "string", minLength: 20, maxLength: 200 } } } }
+  }, async (request, reply) => {
+    const client = await pool.connect();
+    try {
+      await client.query("BEGIN");
+      const result = await client.query("SELECT user_id FROM email_verification_tokens WHERE token_hash = $1 AND expires_at > now() FOR UPDATE", [hashToken(request.body.token)]);
+      if (!result.rowCount) { await client.query("ROLLBACK"); return reply.code(400).send({ error: "verification_token_invalid_or_expired" }); }
+      await client.query("UPDATE users SET email_verified = true, updated_at = now() WHERE id = $1", [result.rows[0].user_id]);
+      await client.query("DELETE FROM email_verification_tokens WHERE user_id = $1", [result.rows[0].user_id]);
+      await client.query("COMMIT");
+      return { status: "verified", message: "Email address verified. You can now sign in." };
+    } catch (error) { await client.query("ROLLBACK").catch(() => {}); throw error; }
+    finally { client.release(); }
+  });
+
+  app.post("/api/auth/resend-verification", {
+    config: { rateLimit: { max: 3, timeWindow: "15 minutes" } },
+    schema: { body: { type: "object", additionalProperties: false, required: ["email"], properties: { email: { type: "string", maxLength: 254, pattern: emailPattern } } } }
+  }, async (request, reply) => {
+    if (process.env.REQUIRE_EMAIL_VERIFICATION === "true" && !mailer) return reply.code(503).send({ error: "email_delivery_not_configured" });
+    const result = await pool.query("SELECT id, name, email, email_verified FROM users WHERE email = $1 AND status = 'active'", [request.body.email.trim().toLowerCase()]);
+    const user = result.rows[0];
+    if (user && !user.email_verified) {
+      const token = newToken();
+      await pool.query("DELETE FROM email_verification_tokens WHERE user_id = $1", [user.id]);
+      await pool.query("INSERT INTO email_verification_tokens (user_id, token_hash, expires_at) VALUES ($1, $2, now() + interval '24 hours')", [user.id, hashToken(token)]);
+      const link = frontendUrl + "/?verify=" + encodeURIComponent(token);
+      if (mailer) await sendAccountEmail(user.email, "Verify your SkillChain email", "Hello " + user.name + ", verify your email within 24 hours: " + link);
+      else if (process.env.NODE_ENV !== "production") request.log.info({ verificationUrl: link }, "Development email verification link");
+    }
+    return { message: "If the account needs verification, instructions will be sent to its email address." };
+  });
+
+  app.post("/api/auth/forgot-password", {
+    config: { rateLimit: { max: 3, timeWindow: "15 minutes" } },
+    schema: { body: { type: "object", additionalProperties: false, required: ["email"], properties: { email: { type: "string", maxLength: 254, pattern: emailPattern } } } }
+  }, async (request, reply) => {
+    if (process.env.NODE_ENV === "production" && !mailer) return reply.code(503).send({ error: "email_delivery_not_configured" });
+    const result = await pool.query("SELECT id, name, email FROM users WHERE email = $1 AND status = 'active'", [request.body.email.trim().toLowerCase()]);
+    const user = result.rows[0];
+    let developmentUrl;
+    if (user) {
+      const token = newToken();
+      await pool.query("DELETE FROM password_reset_tokens WHERE user_id = $1", [user.id]);
+      await pool.query("INSERT INTO password_reset_tokens (user_id, token_hash, expires_at) VALUES ($1, $2, now() + interval '30 minutes')", [user.id, hashToken(token)]);
+      const link = frontendUrl + "/?reset=" + encodeURIComponent(token);
+      if (mailer) await sendAccountEmail(user.email, "Reset your SkillChain password", "Hello " + user.name + ", this password-reset link expires in 30 minutes: " + link);
+      else if (process.env.NODE_ENV !== "production") developmentUrl = link;
+    }
+    return { message: "If an active account matches that email, password reset instructions will be sent.", ...(developmentUrl ? { developmentUrl } : {}) };
+  });
+
+  app.post("/api/auth/reset-password", {
+    config: { rateLimit: { max: 5, timeWindow: "15 minutes" } },
+    schema: { body: { type: "object", additionalProperties: false, required: ["token", "password"], properties: { token: { type: "string", minLength: 20, maxLength: 200 }, password: { type: "string", minLength: 12, maxLength: 128 } } } }
+  }, async (request, reply) => {
+    const client = await pool.connect();
+    try {
+      await client.query("BEGIN");
+      const result = await client.query("SELECT user_id FROM password_reset_tokens WHERE token_hash = $1 AND expires_at > now() FOR UPDATE", [hashToken(request.body.token)]);
+      if (!result.rowCount) { await client.query("ROLLBACK"); return reply.code(400).send({ error: "reset_token_invalid_or_expired" }); }
+      const userId = result.rows[0].user_id;
+      const passwordHash = await bcrypt.hash(request.body.password, 12);
+      await client.query("UPDATE users SET password_hash = $1, updated_at = now() WHERE id = $2", [passwordHash, userId]);
+      await client.query("DELETE FROM password_reset_tokens WHERE user_id = $1", [userId]);
+      await client.query("COMMIT");
+      return { message: "Password updated. Please sign in with your new password." };
+    } catch (error) { await client.query("ROLLBACK").catch(() => {}); throw error; }
+    finally { client.release(); }
+  });
+
   app.post("/api/auth/register", {
     config: { rateLimit: { max: 5, timeWindow: "1 minute" } },
     schema: { body: { type: "object", additionalProperties: false, required: ["name", "email", "password"], properties: {
