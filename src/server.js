@@ -1,5 +1,6 @@
 import Fastify from "fastify";
 import helmet from "@fastify/helmet";
+import cors from "@fastify/cors";
 import jwt from "@fastify/jwt";
 import rateLimit from "@fastify/rate-limit";
 import pg from "pg";
@@ -31,17 +32,21 @@ export function buildApp({ pool: suppliedPool, jwtSecret = process.env.JWT_SECRE
   });
 
   app.register(helmet, { contentSecurityPolicy: false });
+  const allowedOrigins = (process.env.CORS_ORIGINS ?? "").split(",").map((origin) => origin.trim()).filter(Boolean);
+  app.register(cors, { origin: allowedOrigins.length ? allowedOrigins : false, credentials: false });
   app.register(jwt, { secret: jwtSecret, sign: { expiresIn: "1h" } });
   app.register(rateLimit, { max: 100, timeWindow: "1 minute" });
   app.decorateRequest("identity", null);
   app.decorate("authenticate", async function authenticate(request, reply) {
     try {
       await request.jwtVerify();
-      if (!request.user?.sub) return reply.code(401).send({ error: "unauthorized" });
-      request.identity = { id: request.user.sub, email: request.user.email };
     } catch {
       return reply.code(401).send({ error: "unauthorized" });
     }
+    if (!request.user?.sub) return reply.code(401).send({ error: "unauthorized" });
+    const activeUser = await pool.query("SELECT id, email FROM users WHERE id = $1 AND status = 'active'", [request.user.sub]);
+    if (!activeUser.rowCount) return reply.code(401).send({ error: "unauthorized" });
+    request.identity = { id: activeUser.rows[0].id, email: activeUser.rows[0].email };
   });
   app.addHook("onClose", async () => { if (ownsPool) await pool.end(); });
 
