@@ -108,6 +108,7 @@ test("API integration: registration, authentication, ownership and request workf
   }
 });
 
-test("API refuses to start without a sufficiently strong JWT secret", () => {
+test("API refuses short and placeholder JWT secrets", () => {
   assert.throws(() => buildApp({ pool: {}, jwtSecret: "too-short" }), /JWT_SECRET/);
+  assert.throws(() => buildApp({ pool: {}, jwtSecret: "replace-with-a-random-secret-of-at-least-32-bytes" }), /non-placeholder/);
 });
