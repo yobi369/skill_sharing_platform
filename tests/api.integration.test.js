@@ -70,6 +70,11 @@ test("API integration: registration, authentication, ownership and request workf
     const forbiddenEdit = await app.inject({ method: "PATCH", url: `/api/skills/${skill.id}`, headers: { authorization: `Bearer ${tokenB}` }, payload: { title: "Hijacked listing" } });
     assert.equal(forbiddenEdit.statusCode, 404);
 
+    const ownRequest = await app.inject({ method: "POST", url: `/api/skills/${skill.id}/requests`, headers: { authorization: `Bearer ${tokenA}` }, payload: {
+      message: "I would like to request my own listing as a negative test."
+    } });
+    assert.equal(ownRequest.statusCode, 400);
+
     const createRequest = await app.inject({ method: "POST", url: `/api/skills/${skill.id}/requests`, headers: { authorization: `Bearer ${tokenB}` }, payload: {
       message: "I would like to learn JavaScript fundamentals with practical exercises."
     } });
@@ -86,6 +91,10 @@ test("API integration: registration, authentication, ownership and request workf
     const visibleRequests = await app.inject({ method: "GET", url: "/api/requests", headers: { authorization: `Bearer ${tokenB}` } });
     assert.equal(visibleRequests.statusCode, 200);
     assert.equal(visibleRequests.json().items.some((item) => item.id === requestId), true);
+
+    await pool.query("UPDATE users SET status = 'suspended' WHERE id = $1", [userA.id]);
+    const suspendedToken = await app.inject({ method: "GET", url: "/api/skills/mine", headers: { authorization: `Bearer ${tokenA}` } });
+    assert.equal(suspendedToken.statusCode, 401);
   } finally {
     if (userA?.id) await pool.query("DELETE FROM users WHERE id = $1", [userA.id]).catch(() => {});
     if (userB?.id) await pool.query("DELETE FROM users WHERE id = $1", [userB.id]).catch(() => {});
