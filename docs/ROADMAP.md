@@ -34,7 +34,7 @@ This roadmap is an implementation plan, not a claim that these features already 
 
 ## M3 — Operational readiness
 
-- [ ] CI runs formatting/lint, tests, dependency checks, and build checks on pull requests.
+- [x] CI runs JavaScript syntax checks, tests, dependency audit, Compose validation, and a Docker build on pull requests.\n- [ ] Add formatting/lint rules and further security scanning.
 - [ ] Add environment-specific configuration and secret handling.
 - [ ] Add health/readiness checks, structured logs, error monitoring, and rollback instructions.
 - [ ] Run accessibility, performance, and security reviews.
