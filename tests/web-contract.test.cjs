@@ -25,7 +25,11 @@ test("real frontend has accessible auth, search, listing and request workflows",
   assert.match(html, /id="notification-list"/);
   assert.match(html, /id="admin-report-list"/);
   assert.match(html, /aria-live="polite"/);
-  assert.match(html, /Prototype preview/);
+  assert.match(html, /Preview environment/);
+  assert.match(html, /API is not connected yet/);
+  assert.doesNotMatch(html, /skill_sharing_platform\.html/);
+  assert.match(app, /function applyApiAvailability/);
+  assert.match(app, /control\.disabled = true/);
 });
 
 test("frontend calls the implemented API and uses a session-scoped bearer token", () => {
