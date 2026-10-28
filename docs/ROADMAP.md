@@ -21,7 +21,7 @@ This roadmap is an implementation plan, not a claim that these features already 
 - [ ] Add moderation/reporting and account suspension controls.
 - [ ] Add database migrations and automated integration tests.
 
-**Acceptance:** two independent test users can create listings and request exchanges; one user cannot read or modify another user's private records; data survives service restart.
+**Acceptance:** the PostgreSQL-backed integration suite verifies two users, authentication, listing creation/discovery, blocked cross-owner edits, and provider-only acceptance. Hosting-level restart durability and backups still require environment-specific verification.
 
 ## M2 — Learning workflow and trust
 
