@@ -5,11 +5,20 @@ SkillChain is a skill-sharing marketplace project with a browser prototype and a
 ## Current implementation
 
 - `web/` — API-connected responsive marketplace interface for accounts, skill discovery, listing management, and exchange requests. Configure the API origin in `web/config.js`.
-- `src/server.js` — Fastify API for registration/login, current-user lookup, skill discovery and CRUD, skill exchange requests, and health checks.
-- `db/schema.sql` — PostgreSQL schema for users, skills, and exchange requests.
+- `src/server.js` — Fastify API for account security, skill discovery and CRUD, exchange requests, notifications, user reports, and admin moderation.
+- `db/schema.sql` — repeatable additive PostgreSQL schema for users, skills, exchange requests, verification/reset tokens, notifications, and moderation reports.
 - `scripts/migrate.js` — explicit, transactional schema setup.
-- `tests/api.integration.test.js` — integration test covering two users, authentication, ownership boundaries, and request workflow against PostgreSQL.
+- `tests/api.integration.test.js` — PostgreSQL integration coverage for auth, one-time verification/reset tokens, ownership, requests, notifications, and moderation permissions.
 - `docs/ARCHITECTURE.md`, `docs/ROADMAP.md`, and `SECURITY.md` — architecture, release gates, and security expectations.
+
+## Account security and moderation
+
+- Registration creates a one-time email-verification token that expires after 24 hours. Password reset tokens expire after 30 minutes; both are stored as SHA-256 hashes and invalidated after use.
+- Configure `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `SMTP_SECURE`, `EMAIL_FROM`, and the public `FRONTEND_URL` to deliver verification and reset links. In production, set `REQUIRE_EMAIL_VERIFICATION=true` only after SMTP has been tested. If production email is required but not configured, registration and verification resend return a clear service-configuration error.
+- In non-production mode only, verification/reset links may be returned for local testing. Never enable development mode in a public deployment.
+- Users can report a published listing or another active account. Admin-only moderation routes support review, resolution/dismissal, and (when explicitly selected) suspending the reported account or archiving the reported skill.
+- To promote an already-created, active, email-verified account, set `DATABASE_URL`, `ADMIN_EMAIL`, and `CONFIRM_ADMIN_PROMOTION=true`, then run `npm run promote-admin`. Do this from a trusted operator environment; never expose these values to the browser. The command refuses unverified or inactive accounts.
+- In-app notifications are created for exchange-request activity. Delivery is stored in PostgreSQL; push notifications and outbound notification email are not implemented.
 
 ## Run the API locally
 
