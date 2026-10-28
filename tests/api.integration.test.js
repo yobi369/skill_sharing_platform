@@ -57,6 +57,11 @@ test("API integration: registration, authentication, ownership and request workf
     } });
     assert.equal(unauthorized.statusCode, 401);
 
+    const whitespaceSkill = await app.inject({ method: "POST", url: "/api/skills", headers: { authorization: `Bearer ${tokenA}` }, payload: {
+      title: "   ", description: "Practical JavaScript mentorship for beginners.", category: "  "
+    } });
+    assert.equal(whitespaceSkill.statusCode, 400);
+
     const createSkill = await app.inject({ method: "POST", url: "/api/skills", headers: { authorization: `Bearer ${tokenA}` }, payload: {
       title: "JavaScript coaching", description: "Practical JavaScript mentorship for beginners.", category: "Programming"
     } });
