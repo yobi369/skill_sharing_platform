@@ -81,7 +81,7 @@
 
     <section id="account-panel" class="account-panel panel" hidden aria-labelledby="account-heading">
       <div><p class="eyebrow">Signed in</p><h2 id="account-heading">Your workspace</h2><p id="account-name" class="muted"></p></div>
-      <button id="signout-button" class="button button-quiet" type="button">Sign out</button>
+      <div class="button-row"><button id="delete-account-open" class="button button-quiet" type="button">Delete account</button><button id="signout-button" class="button button-quiet" type="button">Sign out</button></div>
     </section>
 
     <section id="discover" class="section-block">
@@ -174,6 +174,15 @@
     </form>
   </dialog>
 
+  <dialog id="delete-account-dialog" class="dialog">
+    <form id="delete-account-form" class="stack-form">
+      <div class="dialog-heading"><div><p class="eyebrow">Irreversible action</p><h2>Delete your account</h2></div><button type="button" class="icon-button" data-close-dialog="delete-account-dialog" aria-label="Close account deletion">×</button></div>
+      <p>This permanently deletes your profile, listings, requests, and account notifications. Open reports made by your account may be removed. This action cannot be undone.</p>
+      <label for="delete-account-password">Confirm your password</label><input id="delete-account-password" type="password" autocomplete="current-password" minlength="1" maxlength="128" required>
+      <p id="delete-account-message" class="form-message" role="status" aria-live="polite"></p>
+      <div class="button-row"><button type="button" class="button button-quiet" data-close-dialog="delete-account-dialog">Cancel</button><button type="submit" class="button button-primary">Permanently delete</button></div>
+    </form>
+  </dialog>
   <dialog id="report-dialog" class="dialog">
     <form id="report-form" class="stack-form">
       <div class="dialog-heading"><div><p class="eyebrow">Community safety</p><h2>Report content</h2></div><button type="button" class="icon-button" data-close-dialog="report-dialog" aria-label="Close report form">×</button></div>
@@ -184,7 +193,7 @@
       <div class="button-row"><button type="button" class="button button-quiet" data-close-dialog="report-dialog">Cancel</button><button type="submit" class="button button-primary">Submit report</button></div>
     </form>
   </dialog>
-  <footer class="site-footer"><span>SkillChain</span><span>Skill-sharing prototype connected to the configured API. No payments or blockchain transactions.</span></footer>
+  <footer class="site-footer"><span>SkillChain</span><nav aria-label="Legal"><a href="./guidelines.html">Community guidelines</a><a href="./privacy.html">Privacy</a><a href="./terms.html">Terms</a></nav><span>No payments or blockchain transactions.</span></footer>
   <div id="global-message" class="global-message" role="status" aria-live="polite"></div>
 </body>
 </html>
