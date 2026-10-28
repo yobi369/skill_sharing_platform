@@ -18,6 +18,9 @@ const $ = (selector) => document.querySelector(selector);
 const byId = (id) => document.getElementById(id);
 
 async function api(path, options = {}) {
+  if (!API_BASE) {
+    throw new Error("SkillChain is in preview mode. Account and marketplace actions become available after the API is configured.");
+  }
   const headers = new Headers(options.headers ?? {});
   if (options.body !== undefined) headers.set("Content-Type", "application/json");
   if (state.token) headers.set("Authorization", `Bearer ${state.token}`);
@@ -576,6 +579,12 @@ byId("report-filter").addEventListener("change", () => void loadAdminReports());
 
 async function checkConnection() {
   const status = byId("connection-status");
+  if (!API_BASE) {
+    status.textContent = "Preview · API not connected";
+    status.classList.add("error");
+    status.classList.remove("connected");
+    return;
+  }
   try {
     await api("/health/ready");
     status.textContent = "API connected";
