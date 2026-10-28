@@ -67,11 +67,11 @@ For local browser development, set `apiBaseUrl: "http://localhost:3000"` in `web
 
 Run `npm run check` to validate JavaScript syntax and execute tests. The API integration test is skipped locally if `DATABASE_URL` is absent. GitHub Actions provisions PostgreSQL and runs schema/integration tests, dependency audit, syntax/contract checks, Compose validation, Docker build, and secret-pattern scanning.
 
-The latest recorded quality run is [run 40758231879](https://github.com/yobi369/skill_sharing_platform/actions/runs/40758231879), which passed for commit `08a88812e5637f127b759da1a7910ab209ce53b0`. Check the current branch/PR for newer results before releasing.
+The latest confirmed quality run before the preview-status UI changes is [run 40759320531](https://github.com/yobi369/skill_sharing_platform/actions/runs/40759320531), which passed for commit `ca88320f516624f30566760b6a97b8db9a18ad35`. The preview-status UI changes were subsequently deployed by the static host; do not treat them as covered by that earlier run.
 
 ## Release status and limitations
 
-This repository has a meaningful API and frontend foundation, but a passing CI run is not proof of a live production service. Public deployment, SMTP delivery, durable hosted database, backup/restore, external browser E2E, and independent security review have not yet been verified. Rate limits are per instance; the optional `REDIS_URL` is not currently wired to a distributed rate-limit adapter. Push notifications, payments, escrow, wallets, and blockchain transactions are not implemented.
+A static frontend preview is deployed at https://skillchain-preview.onrender.com, but the API is not connected on that URL. The hosting provider reports the static deployment as live; an independent external HTTP/browser check has not been completed. This is not a functioning end-to-end marketplace or a production release. SMTP delivery, durable hosted database, backup/restore, external browser E2E, and independent security review have not yet been verified. Rate limits are per instance; the optional `REDIS_URL` is not currently wired to a distributed rate-limit adapter. Push notifications, payments, escrow, wallets, and blockchain transactions are not implemented.
 
 Do not use a temporary free database for real user data. Review `docs/RELEASE_RUNBOOK.md` before deployment. If durable storage, tested email delivery, and release gates cannot be met within the no-cost constraint, keep the application in preview/staging mode rather than inviting real users to store data.
 
