@@ -122,3 +122,12 @@ textarea { resize: vertical; }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; }
 }
+
+.account-help-grid { margin-top: 1rem; }
+.recovery-form { margin-top: 1rem; max-width: 34rem; }
+#admin-panel .item-actions { display: flex; flex-wrap: wrap; gap: .5rem; }
+#admin-panel textarea { width: 100%; margin-top: .75rem; }
+#notification-list .list-item { border-left: 3px solid var(--primary); }
+#notification-list .list-item p { overflow-wrap: anywhere; }
+#report-dialog, #edit-dialog, #request-dialog { max-width: min(42rem, calc(100vw - 2rem)); }
+#report-dialog::backdrop, #edit-dialog::backdrop, #request-dialog::backdrop { background: rgba(12, 20, 35, .62); }
