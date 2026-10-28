@@ -140,9 +140,12 @@ test("API integration: registration, authentication, ownership and request workf
     assert.equal(replayReset.statusCode, 400, "password reset tokens must be one-time use");
     const loginAfterReset = await app.inject({ method: "POST", url: "/api/auth/login", payload: { email: emailA, password: "New-Strong-passphrase-Z9!" } });
     assert.equal(loginAfterReset.statusCode, 200, loginAfterReset.body);
+    const tokenAAfterReset = loginAfterReset.json().token;
+    const revokedOldSession = await app.inject({ method: "GET", url: "/api/skills/mine", headers: { authorization: `Bearer ${tokenA}` } });
+    assert.equal(revokedOldSession.statusCode, 401, "password reset must revoke existing sessions");
 
     await pool.query("UPDATE users SET status = 'suspended' WHERE id = $1", [userA.id]);
-    const suspendedToken = await app.inject({ method: "GET", url: "/api/skills/mine", headers: { authorization: `Bearer ${tokenA}` } });
+    const suspendedToken = await app.inject({ method: "GET", url: "/api/skills/mine", headers: { authorization: `Bearer ${tokenAAfterReset}` } });
     assert.equal(suspendedToken.statusCode, 401);
   } finally {
     if (userA?.id) await pool.query("DELETE FROM users WHERE id = $1", [userA.id]).catch(() => {});
