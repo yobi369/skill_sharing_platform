@@ -4,7 +4,7 @@ SkillChain is a skill-sharing marketplace project with a browser prototype and a
 
 ## Current implementation
 
-- `skill_sharing_platform.html` — responsive single-page UI prototype; not yet connected to the API.
+- `web/` — API-connected responsive marketplace interface for accounts, skill discovery, listing management, and exchange requests. Configure the API origin in `web/config.js`.
 - `src/server.js` — Fastify API for registration/login, current-user lookup, skill discovery and CRUD, skill exchange requests, and health checks.
 - `db/schema.sql` — PostgreSQL schema for users, skills, and exchange requests.
 - `scripts/migrate.js` — explicit, transactional schema setup.
@@ -35,7 +35,7 @@ npm run migrate
 npm start
 ```
 
-Use a strong, unique `JWT_SECRET` (at least 32 bytes) and a least-privilege database account. `CORS_ORIGINS` is deny-by-default when unset. Do not set `DATABASE_SSL=true` unless the database endpoint supports TLS with a trusted certificate.
+Use a strong, unique `JWT_SECRET` (at least 32 bytes) and a least-privilege database account. `CORS_ORIGINS` is deny-by-default when unset. Do not set `DATABASE_SSL=true` unless the database endpoint supports TLS with a trusted certificate. For local browser development, set `apiBaseUrl: "http://localhost:3000"` in `web/config.js`, then serve the repository with `python -m http.server 8000` and open `http://localhost:8000/web/`. Keep `CORS_ORIGINS` limited to the exact frontend origin. For production, set `apiBaseUrl` to the deployed API origin and configure the same frontend origin in the API's CORS allowlist.
 
 ## API surface
 
