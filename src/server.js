@@ -131,6 +131,9 @@ export function buildApp({ pool: suppliedPool, jwtSecret = process.env.JWT_SECRE
     category: { type: "string", minLength: 2, maxLength: 80 }, status: { type: "string", enum: ["draft", "published"], default: "published" }
   } } } }, async (request, reply) => {
     const { title, description, category, status = "published" } = request.body;
+    if (title.trim().length < 3 || description.trim().length < 10 || category.trim().length < 2) {
+      return reply.code(400).send({ error: "validation_error", message: "Title, description, and category must contain enough non-space characters." });
+    }
     const result = await pool.query(
       "INSERT INTO skills (owner_id, title, description, category, status) VALUES ($1, $2, $3, $4, $5) RETURNING id, owner_id, title, description, category, status, created_at, updated_at",
       [request.identity.id, title.trim(), description.trim(), category.trim(), status]
@@ -153,7 +156,13 @@ export function buildApp({ pool: suppliedPool, jwtSecret = process.env.JWT_SECRE
     const allowed = ["title", "description", "category", "status"];
     const updates = allowed.filter((key) => request.body[key] !== undefined);
     const values = updates.map((key) => typeof request.body[key] === "string" ? request.body[key].trim() : request.body[key]);
-    const sets = updates.map((key, index) => `${key} = $${index + 3}`);
+    for (let index = 0; index < updates.length; index += 1) {
+      const minimum = { title: 3, description: 10, category: 2 }[updates[index]] ?? 0;
+      if (minimum && values[index].length < minimum) {
+        return reply.code(400).send({ error: "validation_error", message: `${updates[index]} contains too few non-space characters.` });
+      }
+    }
+    const sets = updates.map((key, index) => `${key} = ${index + 3}`);
     const result = await pool.query(
       `UPDATE skills SET ${sets.join(", ")}, updated_at = now() WHERE id = $1 AND owner_id = $2 RETURNING id, owner_id, title, description, category, status, created_at, updated_at`,
       [request.params.id, request.identity.id, ...values]
@@ -172,6 +181,9 @@ export function buildApp({ pool: suppliedPool, jwtSecret = process.env.JWT_SECRE
     params: { type: "object", required: ["id"], properties: { id: idSchema } },
     body: { type: "object", additionalProperties: false, required: ["message"], properties: { message: { type: "string", minLength: 10, maxLength: 2000 } } }
   } }, async (request, reply) => {
+    if (request.body.message.trim().length < 10) {
+      return reply.code(400).send({ error: "validation_error", message: "Message must contain at least ten non-space characters." });
+    }
     const skill = await pool.query("SELECT id, owner_id FROM skills WHERE id = $1 AND status = 'published'", [request.params.id]);
     if (!skill.rowCount) return reply.code(404).send({ error: "skill_not_found" });
     if (skill.rows[0].owner_id === request.identity.id) return reply.code(400).send({ error: "cannot_request_own_skill" });
