@@ -6,9 +6,9 @@ This roadmap is an implementation plan, not a claim that these features already 
 
 - [x] Document the current repository and its demo-only behaviour.
 - [x] Define security expectations and a target architecture.
-- [ ] Label simulated balances, transaction history, and marketplace metrics in the UI.
-- [ ] Remove claims that imply real wallet connection, AI matching, blockchain writes, or live statistics unless integrated and verified.
-- [ ] Add browser-level smoke tests and accessibility checks.
+- [x] Label simulated balances, transaction history, and marketplace metrics in the UI.
+- [x] Remove misleading wallet, payment, AI-matching, blockchain-write, and live-statistics success claims.
+- [x] Add zero-dependency contract tests and inline JavaScript syntax checks; improve navigation state semantics.
 
 **Acceptance:** users can distinguish demo content from real account or network state; navigation and forms work without uncaught browser errors.
 
