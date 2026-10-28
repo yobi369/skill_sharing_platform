@@ -173,7 +173,7 @@ export function buildApp({ pool: suppliedPool, jwtSecret = process.env.JWT_SECRE
       if (mailer) await sendAccountEmail(user.email, "Verify your SkillChain email", "Hello " + user.name + ", verify your email within 24 hours: " + verificationUrl);
       else if (process.env.NODE_ENV !== "production") request.log.info({ verificationUrl }, "Development email verification link");
       const requireVerification = process.env.REQUIRE_EMAIL_VERIFICATION === "true";
-      const token = requireVerification ? null : app.jwt.sign({ sub: user.id, email: user.email, ver: user.token_version });
+      const token = requireVerification ? null : app.jwt.sign({ sub: user.id, email: user.email, ver: 0 });
       return reply.code(201).send({ user: { ...user, email_verified: false }, ...(token ? { token } : {}), verificationRequired: requireVerification, ...(!mailer && process.env.NODE_ENV !== "production" ? { verificationUrl } : {}) });
     } catch (error) {
       if (error.code === "23505") return reply.code(409).send({ error: "email_already_registered" });
@@ -193,7 +193,7 @@ export function buildApp({ pool: suppliedPool, jwtSecret = process.env.JWT_SECRE
     const valid = user ? await bcrypt.compare(request.body.password, user.password_hash) : false;
     if (!valid) return reply.code(401).send({ error: "invalid_credentials" });
     if (process.env.REQUIRE_EMAIL_VERIFICATION === "true" && !user.email_verified) return reply.code(403).send({ error: "email_not_verified" });
-    const token = app.jwt.sign({ sub: user.id, email: user.email });
+    const token = app.jwt.sign({ sub: user.id, email: user.email, ver: user.token_version });
     return { user: { id: user.id, name: user.name, email: user.email, email_verified: user.email_verified, role: user.role }, token };
   });
 
