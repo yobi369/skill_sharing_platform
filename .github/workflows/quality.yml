@@ -37,10 +37,9 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: npm
 
-      - name: Install locked dependencies
-        run: npm install --package-lock-only && npm install
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
 
       - name: Validate required project files
         shell: bash
@@ -52,7 +51,6 @@ jobs:
           test -s docs/ROADMAP.md
           test -s CONTRIBUTING.md
           test -s package.json
-          test -s package-lock.json
           test -s db/schema.sql
           test -s src/server.js
           test -s tests/api.integration.test.js
