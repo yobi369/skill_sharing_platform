@@ -5,9 +5,18 @@ import jwt from "@fastify/jwt";
 import rateLimit from "@fastify/rate-limit";
 import pg from "pg";
 import bcrypt from "bcryptjs";
-import { randomUUID } from "node:crypto";
+import { randomUUID, randomBytes, createHash } from "node:crypto";
+import nodemailer from "nodemailer";
 
 const { Pool } = pg;
+
+const frontendUrl = (process.env.FRONTEND_URL ?? "http://localhost:8000/web/").replace(/\/+$/, "");
+const smtpReady = Boolean(process.env.SMTP_HOST && process.env.SMTP_PORT && process.env.EMAIL_FROM);
+const mailer = smtpReady ? nodemailer.createTransport({ host: process.env.SMTP_HOST, port: Number(process.env.SMTP_PORT), secure: process.env.SMTP_SECURE === "true", auth: process.env.SMTP_USER ? { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS } : undefined, connectionTimeout: 5000, greetingTimeout: 5000, socketTimeout: 10000 }) : null;
+const hashToken = (token) => createHash("sha256").update(token).digest("hex");
+const newToken = () => randomBytes(32).toString("base64url");
+async function sendAccountEmail(to, subject, text) { if (!mailer) return false; await mailer.sendMail({ from: process.env.EMAIL_FROM, to, subject, text }); return true; }
+async function createNotification(pool, userId, type, title, body, href = "/web/#workspace") { if (!userId) return; await pool.query("INSERT INTO notifications (user_id, type, title, body, href) VALUES ($1, $2, $3, $4, $5)", [userId, type, title, body, href]); }
 const emailPattern = "^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$";
 const idSchema = { type: "string", format: "uuid" };
 
@@ -44,9 +53,10 @@ export function buildApp({ pool: suppliedPool, jwtSecret = process.env.JWT_SECRE
       return reply.code(401).send({ error: "unauthorized" });
     }
     if (!request.user?.sub) return reply.code(401).send({ error: "unauthorized" });
-    const activeUser = await pool.query("SELECT id, email FROM users WHERE id = $1 AND status = 'active'", [request.user.sub]);
+    const activeUser = await pool.query("SELECT id, name, email, role, token_version FROM users WHERE id = $1 AND status = 'active'", [request.user.sub]);
     if (!activeUser.rowCount) return reply.code(401).send({ error: "unauthorized" });
-    request.identity = { id: activeUser.rows[0].id, email: activeUser.rows[0].email };
+    if (request.user.ver !== activeUser.rows[0].token_version) return reply.code(401).send({ error: "unauthorized" });
+    request.identity = { id: activeUser.rows[0].id, name: activeUser.rows[0].name, email: activeUser.rows[0].email, role: activeUser.rows[0].role };
   });
   app.addHook("onClose", async () => { if (ownsPool) await pool.end(); });
 
@@ -64,6 +74,80 @@ export function buildApp({ pool: suppliedPool, jwtSecret = process.env.JWT_SECRE
     catch { return reply.code(503).send({ status: "unavailable" }); }
   });
 
+
+  app.post("/api/auth/verify-email", {
+    config: { rateLimit: { max: 10, timeWindow: "1 minute" } },
+    schema: { body: { type: "object", additionalProperties: false, required: ["token"], properties: { token: { type: "string", minLength: 20, maxLength: 200 } } } }
+  }, async (request, reply) => {
+    const client = await pool.connect();
+    try {
+      await client.query("BEGIN");
+      const result = await client.query("SELECT user_id FROM email_verification_tokens WHERE token_hash = $1 AND expires_at > now() FOR UPDATE", [hashToken(request.body.token)]);
+      if (!result.rowCount) { await client.query("ROLLBACK"); return reply.code(400).send({ error: "verification_token_invalid_or_expired" }); }
+      await client.query("UPDATE users SET email_verified = true, updated_at = now() WHERE id = $1", [result.rows[0].user_id]);
+      await client.query("DELETE FROM email_verification_tokens WHERE user_id = $1", [result.rows[0].user_id]);
+      await client.query("COMMIT");
+      return { status: "verified", message: "Email address verified. You can now sign in." };
+    } catch (error) { await client.query("ROLLBACK").catch(() => {}); throw error; }
+    finally { client.release(); }
+  });
+
+  app.post("/api/auth/resend-verification", {
+    config: { rateLimit: { max: 3, timeWindow: "15 minutes" } },
+    schema: { body: { type: "object", additionalProperties: false, required: ["email"], properties: { email: { type: "string", maxLength: 254, pattern: emailPattern } } } }
+  }, async (request, reply) => {
+    if (process.env.REQUIRE_EMAIL_VERIFICATION === "true" && !mailer) return reply.code(503).send({ error: "email_delivery_not_configured" });
+    const result = await pool.query("SELECT id, name, email, email_verified FROM users WHERE email = $1 AND status = 'active'", [request.body.email.trim().toLowerCase()]);
+    const user = result.rows[0];
+    if (user && !user.email_verified) {
+      const token = newToken();
+      await pool.query("DELETE FROM email_verification_tokens WHERE user_id = $1", [user.id]);
+      await pool.query("INSERT INTO email_verification_tokens (user_id, token_hash, expires_at) VALUES ($1, $2, now() + interval '24 hours')", [user.id, hashToken(token)]);
+      const link = frontendUrl + "/?verify=" + encodeURIComponent(token);
+      if (mailer) await sendAccountEmail(user.email, "Verify your SkillChain email", "Hello " + user.name + ", verify your email within 24 hours: " + link);
+      else if (process.env.NODE_ENV !== "production") request.log.info({ verificationUrl: link }, "Development email verification link");
+    }
+    return { message: "If the account needs verification, instructions will be sent to its email address." };
+  });
+
+  app.post("/api/auth/forgot-password", {
+    config: { rateLimit: { max: 3, timeWindow: "15 minutes" } },
+    schema: { body: { type: "object", additionalProperties: false, required: ["email"], properties: { email: { type: "string", maxLength: 254, pattern: emailPattern } } } }
+  }, async (request, reply) => {
+    if (process.env.NODE_ENV === "production" && !mailer) return reply.code(503).send({ error: "email_delivery_not_configured" });
+    const result = await pool.query("SELECT id, name, email FROM users WHERE email = $1 AND status = 'active'", [request.body.email.trim().toLowerCase()]);
+    const user = result.rows[0];
+    let developmentUrl;
+    if (user) {
+      const token = newToken();
+      await pool.query("DELETE FROM password_reset_tokens WHERE user_id = $1", [user.id]);
+      await pool.query("INSERT INTO password_reset_tokens (user_id, token_hash, expires_at) VALUES ($1, $2, now() + interval '30 minutes')", [user.id, hashToken(token)]);
+      const link = frontendUrl + "/?reset=" + encodeURIComponent(token);
+      if (mailer) await sendAccountEmail(user.email, "Reset your SkillChain password", "Hello " + user.name + ", this password-reset link expires in 30 minutes: " + link);
+      else if (process.env.NODE_ENV !== "production") developmentUrl = link;
+    }
+    return { message: "If an active account matches that email, password reset instructions will be sent.", ...(developmentUrl ? { developmentUrl } : {}) };
+  });
+
+  app.post("/api/auth/reset-password", {
+    config: { rateLimit: { max: 5, timeWindow: "15 minutes" } },
+    schema: { body: { type: "object", additionalProperties: false, required: ["token", "password"], properties: { token: { type: "string", minLength: 20, maxLength: 200 }, password: { type: "string", minLength: 12, maxLength: 128 } } } }
+  }, async (request, reply) => {
+    const client = await pool.connect();
+    try {
+      await client.query("BEGIN");
+      const result = await client.query("SELECT user_id FROM password_reset_tokens WHERE token_hash = $1 AND expires_at > now() FOR UPDATE", [hashToken(request.body.token)]);
+      if (!result.rowCount) { await client.query("ROLLBACK"); return reply.code(400).send({ error: "reset_token_invalid_or_expired" }); }
+      const userId = result.rows[0].user_id;
+      const passwordHash = await bcrypt.hash(request.body.password, 12);
+      await client.query("UPDATE users SET password_hash = $1, token_version = token_version + 1, updated_at = now() WHERE id = $2", [passwordHash, userId]);
+      await client.query("DELETE FROM password_reset_tokens WHERE user_id = $1", [userId]);
+      await client.query("COMMIT");
+      return { message: "Password updated. Please sign in with your new password." };
+    } catch (error) { await client.query("ROLLBACK").catch(() => {}); throw error; }
+    finally { client.release(); }
+  });
+
   app.post("/api/auth/register", {
     config: { rateLimit: { max: 5, timeWindow: "1 minute" } },
     schema: { body: { type: "object", additionalProperties: false, required: ["name", "email", "password"], properties: {
@@ -72,6 +156,7 @@ export function buildApp({ pool: suppliedPool, jwtSecret = process.env.JWT_SECRE
       password: { type: "string", minLength: 12, maxLength: 128 }
     } } }
   }, async (request, reply) => {
+    if (process.env.REQUIRE_EMAIL_VERIFICATION === "true" && !mailer) return reply.code(503).send({ error: "email_delivery_not_configured" });
     const name = request.body.name.trim();
     const email = request.body.email.trim().toLowerCase();
     if (name.length < 2) return reply.code(400).send({ error: "validation_error", message: "Name must contain at least two non-space characters." });
@@ -82,8 +167,14 @@ export function buildApp({ pool: suppliedPool, jwtSecret = process.env.JWT_SECRE
         [name, email, passwordHash]
       );
       const user = result.rows[0];
-      const token = app.jwt.sign({ sub: user.id, email: user.email });
-      return reply.code(201).send({ user, token });
+      const verificationToken = newToken();
+      await pool.query("INSERT INTO email_verification_tokens (user_id, token_hash, expires_at) VALUES ($1, $2, now() + interval '24 hours')", [user.id, hashToken(verificationToken)]);
+      const verificationUrl = frontendUrl + "/?verify=" + encodeURIComponent(verificationToken);
+      if (mailer) await sendAccountEmail(user.email, "Verify your SkillChain email", "Hello " + user.name + ", verify your email within 24 hours: " + verificationUrl);
+      else if (process.env.NODE_ENV !== "production") request.log.info({ verificationUrl }, "Development email verification link");
+      const requireVerification = process.env.REQUIRE_EMAIL_VERIFICATION === "true";
+      const token = requireVerification ? null : app.jwt.sign({ sub: user.id, email: user.email, ver: 0 });
+      return reply.code(201).send({ user: { ...user, email_verified: false }, ...(token ? { token } : {}), verificationRequired: requireVerification, ...(!mailer && process.env.NODE_ENV !== "production" ? { verificationUrl } : {}) });
     } catch (error) {
       if (error.code === "23505") return reply.code(409).send({ error: "email_already_registered" });
       throw error;
@@ -97,16 +188,17 @@ export function buildApp({ pool: suppliedPool, jwtSecret = process.env.JWT_SECRE
       password: { type: "string", minLength: 1, maxLength: 128 }
     } } }
   }, async (request, reply) => {
-    const result = await pool.query("SELECT id, name, email, password_hash FROM users WHERE email = $1 AND status = 'active'", [request.body.email.trim().toLowerCase()]);
+    const result = await pool.query("SELECT id, name, email, password_hash, email_verified, role, token_version FROM users WHERE email = $1 AND status = 'active'", [request.body.email.trim().toLowerCase()]);
     const user = result.rows[0];
     const valid = user ? await bcrypt.compare(request.body.password, user.password_hash) : false;
     if (!valid) return reply.code(401).send({ error: "invalid_credentials" });
-    const token = app.jwt.sign({ sub: user.id, email: user.email });
-    return { user: { id: user.id, name: user.name, email: user.email }, token };
+    if (process.env.REQUIRE_EMAIL_VERIFICATION === "true" && !user.email_verified) return reply.code(403).send({ error: "email_not_verified" });
+    const token = app.jwt.sign({ sub: user.id, email: user.email, ver: user.token_version });
+    return { user: { id: user.id, name: user.name, email: user.email, email_verified: user.email_verified, role: user.role }, token };
   });
 
   app.get("/api/auth/me", { preHandler: app.authenticate }, async (request, reply) => {
-    const result = await pool.query("SELECT id, name, email, created_at FROM users WHERE id = $1 AND status = 'active'", [request.identity.id]);
+    const result = await pool.query("SELECT id, name, email, email_verified, role, created_at FROM users WHERE id = $1 AND status = 'active'", [request.identity.id]);
     if (!result.rowCount) return reply.code(401).send({ error: "unauthorized" });
     return { user: result.rows[0] };
   });
@@ -192,6 +284,7 @@ export function buildApp({ pool: suppliedPool, jwtSecret = process.env.JWT_SECRE
         "INSERT INTO skill_requests (skill_id, requester_id, provider_id, message) VALUES ($1, $2, $3, $4) RETURNING id, skill_id, requester_id, provider_id, message, status, created_at, updated_at",
         [request.params.id, request.identity.id, skill.rows[0].owner_id, request.body.message.trim()]
       );
+      await createNotification(pool, skill.rows[0].owner_id, "request_received", "New skill request", request.identity.name + " requested to learn your skill.", "/web/#workspace");
       return reply.code(201).send({ request: result.rows[0] });
     } catch (error) {
       if (error.code === "23505") return reply.code(409).send({ error: "request_already_exists" });
@@ -217,7 +310,90 @@ export function buildApp({ pool: suppliedPool, jwtSecret = process.env.JWT_SECRE
       [status, request.params.id, request.identity.id]
     );
     if (!result.rowCount) return reply.code(404).send({ error: "request_not_found_or_transition_forbidden" });
-    return { request: result.rows[0] };
+    const changed = result.rows[0];
+    const recipient = status === "cancelled" ? changed.provider_id : changed.requester_id;
+    await createNotification(pool, recipient, "request_" + status, "Skill request " + status, "A skill exchange request was " + status + ".", "/web/#workspace");
+    return { request: changed };
+  });
+
+
+
+  app.delete("/api/account", { preHandler: app.authenticate, schema: {
+    body: { type: "object", additionalProperties: false, required: ["password"], properties: { password: { type: "string", minLength: 1, maxLength: 128 } } }
+  } }, async (request, reply) => {
+    const result = await pool.query("SELECT password_hash FROM users WHERE id = $1 AND status = 'active'", [request.identity.id]);
+    if (!result.rowCount || !(await bcrypt.compare(request.body.password, result.rows[0].password_hash))) {
+      return reply.code(401).send({ error: "invalid_credentials" });
+    }
+    await pool.query("DELETE FROM users WHERE id = $1", [request.identity.id]);
+    return reply.code(204).send();
+  });
+
+  app.get("/api/notifications", { preHandler: app.authenticate, schema: { querystring: { type: "object", additionalProperties: false, properties: { limit: { type: "integer", minimum: 1, maximum: 100, default: 30 } } } } }, async (request) => {
+    const limit = request.query.limit ?? 30;
+    const result = await pool.query("SELECT id, type, title, body, href, read_at, created_at FROM notifications WHERE user_id = $1 ORDER BY created_at DESC LIMIT $2", [request.identity.id, limit]);
+    return { items: result.rows, unread: result.rows.filter((item) => !item.read_at).length };
+  });
+
+  app.patch("/api/notifications/:id/read", { preHandler: app.authenticate, schema: { params: { type: "object", required: ["id"], properties: { id: idSchema } } } }, async (request, reply) => {
+    const result = await pool.query("UPDATE notifications SET read_at = now() WHERE id = $1 AND user_id = $2 RETURNING id, read_at", [request.params.id, request.identity.id]);
+    if (!result.rowCount) return reply.code(404).send({ error: "notification_not_found" });
+    return { notification: result.rows[0] };
+  });
+
+  app.post("/api/reports", { preHandler: app.authenticate, config: { rateLimit: { max: 5, timeWindow: "1 hour" } }, schema: {
+    body: { type: "object", additionalProperties: false, required: ["targetType", "targetId", "reason", "details"], properties: {
+      targetType: { type: "string", enum: ["skill", "user"] }, targetId: idSchema,
+      reason: { type: "string", enum: ["spam", "harassment", "fraud", "unsafe", "misleading", "other"] },
+      details: { type: "string", minLength: 10, maxLength: 2000 }
+    } }
+  } }, async (request, reply) => {
+    if (request.body.details.trim().length < 10) return reply.code(400).send({ error: "validation_error", message: "Please provide at least ten non-space characters." });
+    if (request.body.targetType === "user" && request.body.targetId === request.identity.id) return reply.code(400).send({ error: "cannot_report_self" });
+    const targetQuery = request.body.targetType === "skill"
+      ? await pool.query("SELECT owner_id AS user_id FROM skills WHERE id = $1 AND status = 'published'", [request.body.targetId])
+      : await pool.query("SELECT id AS user_id FROM users WHERE id = $1 AND status = 'active'", [request.body.targetId]);
+    if (!targetQuery.rowCount) return reply.code(404).send({ error: "report_target_not_found" });
+    const targetUserId = targetQuery.rows[0].user_id;
+    if (targetUserId === request.identity.id) return reply.code(400).send({ error: "cannot_report_own_content" });
+    const existing = await pool.query("SELECT id FROM reports WHERE reporter_id = $1 AND target_type = $2 AND target_id = $3 AND status IN ('open', 'reviewing')", [request.identity.id, request.body.targetType, request.body.targetId]);
+    if (existing.rowCount) return reply.code(409).send({ error: "report_already_open" });
+    try {
+      const result = await pool.query("INSERT INTO reports (reporter_id, target_type, target_id, reason, details) VALUES ($1, $2, $3, $4, $5) RETURNING id, target_type, target_id, reason, status, created_at", [request.identity.id, request.body.targetType, request.body.targetId, request.body.reason, request.body.details.trim()]);
+      return reply.code(201).send({ report: result.rows[0] });
+    } catch (error) {
+      if (error.code === "23505") return reply.code(409).send({ error: "report_already_open" });
+      throw error;
+    }
+  });
+
+  app.get("/api/admin/reports", { preHandler: [app.authenticate, async (request, reply) => { if (request.identity.role !== "admin") return reply.code(403).send({ error: "admin_required" }); }], schema: { querystring: { type: "object", additionalProperties: false, properties: { status: { type: "string", enum: ["open", "reviewing", "resolved", "dismissed"] }, limit: { type: "integer", minimum: 1, maximum: 100, default: 50 } } } } }, async (request) => {
+    const status = request.query.status ?? "open";
+    const limit = request.query.limit ?? 50;
+    const result = await pool.query("SELECT r.id, r.target_type, r.target_id, r.reason, r.details, r.status, r.moderator_note, r.created_at, reporter.name AS reporter_name, reporter.email AS reporter_email, r.moderator_id FROM reports r JOIN users reporter ON reporter.id = r.reporter_id WHERE r.status = $1 ORDER BY r.created_at ASC LIMIT $2", [status, limit]);
+    return { items: result.rows };
+  });
+
+  app.patch("/api/admin/reports/:id", { preHandler: [app.authenticate, async (request, reply) => { if (request.identity.role !== "admin") return reply.code(403).send({ error: "admin_required" }); }], schema: {
+    params: { type: "object", required: ["id"], properties: { id: idSchema } },
+    body: { type: "object", additionalProperties: false, required: ["status"], properties: { status: { type: "string", enum: ["reviewing", "resolved", "dismissed"] }, note: { type: "string", maxLength: 2000 }, suspendTarget: { type: "boolean", default: false } } }
+  } }, async (request, reply) => {
+    const report = await pool.query("SELECT id, target_type, target_id, status FROM reports WHERE id = $1", [request.params.id]);
+    if (!report.rowCount) return reply.code(404).send({ error: "report_not_found" });
+    const row = report.rows[0];
+    if (request.body.suspendTarget && request.body.status !== "resolved") return reply.code(400).send({ error: "suspension_requires_resolved_report" });
+    const client = await pool.connect();
+    try {
+      await client.query("BEGIN");
+      if (request.body.suspendTarget) {
+        if (row.target_type === "user") await client.query("UPDATE users SET status = 'suspended', updated_at = now() WHERE id = $1", [row.target_id]);
+        else await client.query("UPDATE skills SET status = 'archived', updated_at = now() WHERE id = $1", [row.target_id]);
+      }
+      const updated = await client.query("UPDATE reports SET status = $1, moderator_id = $2, moderator_note = $3, updated_at = now() WHERE id = $4 RETURNING id, target_type, target_id, reason, status, moderator_note, moderator_id, updated_at", [request.body.status, request.identity.id, (request.body.note ?? "").trim() || null, request.params.id]);
+      await client.query("COMMIT");
+      return { report: updated.rows[0] };
+    } catch (error) { await client.query("ROLLBACK").catch(() => {}); throw error; }
+    finally { client.release(); }
   });
 
   return app;

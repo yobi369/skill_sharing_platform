@@ -27,6 +27,8 @@ nav a:hover { color: var(--primary); }
 .connection-status { font-size: .78rem; font-weight: 700; color: var(--muted); background: #edf1f8; padding: 7px 11px; border-radius: 999px; white-space: nowrap; }
 .connection-status.connected { color: #126744; background: #dff8ee; }
 .connection-status.error { color: #9c2e2e; background: #ffeded; }
+.preview-notice { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: baseline; margin: 18px 0 0; padding: 14px 17px; border: 1px solid #e8c77a; border-radius: 14px; background: #fff8e5; color: #684b0c; font-size: .9rem; }
+.preview-notice strong { white-space: nowrap; }
 .page-shell { width: min(1180px, calc(100% - 36px)); margin: 0 auto; }
 .hero { padding: clamp(55px, 9vw, 110px) 0 64px; max-width: 790px; }
 .eyebrow { margin: 0 0 12px; color: var(--primary); font-size: .76rem; font-weight: 850; text-transform: uppercase; letter-spacing: .14em; }
@@ -121,4 +123,31 @@ textarea { resize: vertical; }
 }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; }
+}
+
+.account-help-grid { margin-top: 1rem; }
+.recovery-form { margin-top: 1rem; max-width: 34rem; }
+#admin-panel .item-actions { display: flex; flex-wrap: wrap; gap: .5rem; }
+#admin-panel textarea { width: 100%; margin-top: .75rem; }
+#notification-list .list-item { border-left: 3px solid var(--primary); }
+#notification-list .list-item p { overflow-wrap: anywhere; }
+#report-dialog, #edit-dialog, #request-dialog { max-width: min(42rem, calc(100vw - 2rem)); }
+#report-dialog::backdrop, #edit-dialog::backdrop, #request-dialog::backdrop { background: rgba(12, 20, 35, .62); }
+
+.legal-page { padding: clamp(32px, 6vw, 76px) 0; max-width: 900px; }
+.legal-page > h1 { font-size: clamp(2.3rem, 6vw, 4.2rem); margin-bottom: 1rem; }
+.legal-page .panel { margin: 1rem 0; padding: clamp(18px, 3vw, 30px); border-radius: 18px; }
+.legal-page ul { padding-left: 1.4rem; }
+.legal-page li { margin: .5rem 0; }
+.site-footer nav { display: flex; flex-wrap: wrap; gap: 1rem; }
+
+
+/* Keep unavailable controls visibly inactive in a static-only preview. */
+.api-not-configured form input:disabled,
+.api-not-configured form textarea:disabled,
+.api-not-configured form select:disabled,
+.api-not-configured form button:disabled,
+.api-not-configured button:disabled {
+  cursor: not-allowed;
+  opacity: 0.58;
 }

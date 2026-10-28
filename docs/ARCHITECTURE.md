@@ -1,49 +1,49 @@
 # Architecture
 
-## Current implementation (observed baseline)
+## Current product shape
 
-The repository currently contains a single HTML file with embedded CSS and JavaScript plus a product-documentation PDF. UI behaviour and state are implemented in the browser. Some interface elements and handlers simulate matching, task applications, wallet balance, transactions, and blockchain events.
+SkillChain is a peer-to-peer skill-sharing marketplace. The repository contains:
 
-Those simulations are not connected to real services and must not be interpreted as proof of a transaction, identity, payment, or network activity.
+- A responsive static frontend in `web/`.
+- A Fastify API in `src/server.js`.
+- A PostgreSQL schema in `db/schema.sql`.
+- Integration and frontend contract tests in `tests/`.
+- A legacy interactive prototype in `skill_sharing_platform.html`, which is explicitly demo-only and must not be treated as a live service.
 
-## Current API implementation (feature branch)
+The hosted Render site at https://skillchain-preview.onrender.com is a static preview only. It does not have a connected API or database. Its interface explicitly disables API-dependent controls when `web/config.js` has no `apiBaseUrl`. This deployment is not a functioning end-to-end marketplace.
 
-The API milestone adds a Node.js 20+ Fastify service and PostgreSQL schema in `src/server.js` and `db/schema.sql`. The new `web/` interface calls those endpoints for registration/login, search, listing CRUD, and exchange requests. It uses session-scoped token storage and renders user-provided text without injecting HTML. Configure `web/config.js` with the API origin when frontend and API are hosted separately, and explicitly allow the frontend origin through `CORS_ORIGINS`. Implemented endpoints cover registration/login, current-user lookup, public skill discovery, authenticated skill CRUD, exchange requests, request status transitions, and liveness/readiness checks. Passwords are hashed with bcrypt; bearer tokens expire after one hour; request bodies are schema-validated; auth endpoints have tighter rate limits; SQL queries are parameterized; and skill changes require owner identity. Request transitions are constrained to pending -> accepted/declined by the provider or pending -> cancelled by the requester.
+## Implemented API capabilities
 
-Run `npm install`, configure `DATABASE_URL` and a `JWT_SECRET` of at least 32 bytes, then run `npm run migrate` and `npm start`. A non-root production container and a local Docker Compose stack are also provided; the Compose stack uses a named PostgreSQL volume and applies the schema before starting the API. Set `DATABASE_SSL=true` for a TLS PostgreSQL connection where required. The API integration test uses a real PostgreSQL database and is skipped when `DATABASE_URL` is absent.
+The Fastify service implements registration/login, email verification and password recovery token flows, current-user lookup, public skill discovery, authenticated skill CRUD, skill exchange requests and status transitions, persisted in-app notifications, reporting/moderation, account deletion, and liveness/readiness endpoints.
 
-This is a functional API milestone, not a production launch: the standalone HTML UI is not yet wired to the API; deployment, real backup/restore, external security review, moderation/reporting, notifications, account recovery, email verification, and privacy/data-retention decisions remain open. Configure TLS at the hosting edge, rotate secrets, and use managed database backups before handling real users.
+The service uses bcrypt password hashes, one-hour bearer tokens, token-version checks, request schema validation, parameterized SQL, owner checks, admin authorization, tighter rate limits on sensitive auth endpoints, and safe error responses. The frontend uses session-scoped token storage and renders user-supplied content through text nodes rather than HTML injection.
 
-## Recommended target architecture
+Email verification and password recovery delivery depend on real SMTP configuration. Push notifications, payments, escrow, wallets, and blockchain transactions are not implemented.
 
-Keep the first production milestone deliberately small:
+## Local development
 
-1. **Web client** — responsive, accessible pages for profile, skill listings, search, requests, sessions, and feedback.
-2. **Application API** — validates every request, applies authorization, enforces business rules, and emits structured audit events.
-3. **Relational database** — durable users, skills, availability, requests, sessions, consent, reports, and feedback with migrations and backups.
-4. **Identity** — trusted authentication provider or hardened server-side identity implementation; roles and ownership enforced server-side.
-5. **Notifications** — asynchronous email/in-app notifications with retry and abuse controls.
-6. **Operations** — CI, dependency/security checks, health checks, structured logs without secrets, monitoring, backup/restore drills.
+Requirements: Node.js 20+ and PostgreSQL.
 
-## Core data model candidates
+1. Install dependencies with `npm install`.
+2. Configure `DATABASE_URL` and a unique `JWT_SECRET` of at least 32 bytes.
+3. Apply schema with `npm run migrate`.
+4. Start the API with `npm start`.
+5. Verify `/health/live` and `/health/ready`.
+6. Set `web/config.js` to the API origin and configure `CORS_ORIGINS` to allow the exact frontend origin.
 
-- User: stable ID, display name, privacy settings, status, created/updated timestamps.
-- Skill: owner ID, title, description, category, proficiency/experience claims, visibility, status.
-- Skill request: requester ID, provider ID, learning goal, proposed schedule, status and timestamps.
-- Session: participants, agreed time, status, outcome and cancellation reason.
-- Feedback: session ID, author ID, recipient ID, rating and moderation status.
-- Report: reporter, target, reason, status, restricted access and audit history.
+For a local stack, use Docker Compose and replace all sample credentials in `.env`. Never expose the database publicly or commit secrets.
 
-Define unique constraints and state transitions explicitly. A user must not be able to alter another user's records by changing an ID in a request. Feedback should be tied to a completed, eligible session to reduce fabricated reviews.
+## Trust boundaries and operational constraints
 
-## Trust boundaries
+- The browser is untrusted; API authorization and ownership checks are authoritative.
+- Database credentials and JWT/SMTP secrets must remain server-side.
+- CORS must allow only the exact trusted frontend origins.
+- Database backups and a tested restore are required before real user data is accepted.
+- Rate limiting currently operates per API instance; `REDIS_URL` is not wired to a distributed adapter.
+- Do not present sample data or prototype UI activity as verified real-world usage.
 
-- Browser input is untrusted.
-- The API is the enforcement boundary, not the UI.
-- Database credentials and provider secrets remain server-side.
-- Third-party callbacks/webhooks require signature verification and replay protection.
-- Blockchain data, if ever introduced, is public and irreversible; do not put personal data or private content on-chain.
+## Production gates
 
-## Decisions to make before implementation
+Before inviting real users, configure a durable PostgreSQL service with backups, deploy the API with secure environment variables, verify SMTP delivery, run external browser end-to-end checks, confirm HTTPS/CORS/rate-limit behaviour, test backup restoration, and obtain an independent security review. Review `docs/RELEASE_RUNBOOK.md` for the release checklist.
 
-Choose the hosting platform, authentication model, database, data-retention rules, moderation workflow, and whether payments are actually necessary. Blockchain and AI matching are optional product decisions, not prerequisites for a useful skill-sharing service.
+A successful CI run or hosting-provider deployment status is not, by itself, proof that the complete product is operational.

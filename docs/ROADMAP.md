@@ -17,9 +17,11 @@ This roadmap is an implementation plan, not a claim that these features already 
 - [x] Implement registration/login with password hashing, expiring bearer tokens, and an API-connected frontend.
 - [x] Add server-side skill CRUD with ownership checks and a frontend listing editor.
 - [x] Add search, category filters, pagination, and safe empty/error states in the API-connected frontend.
-- [x] Add skill requests with validated state transitions and a frontend request workflow.\n- [ ] Add notifications for request changes.
-- [ ] Add moderation/reporting and account suspension controls.
-- [ ] Add database migrations and automated integration tests.
+- [x] Add skill requests with validated state transitions and a frontend request workflow.
+- [x] Add persistent in-app notifications for exchange-request activity.
+- [ ] Add outbound email/push delivery for notifications (in-app notifications are implemented; push is not).
+- [x] Add moderation/reporting and account suspension controls.
+- [x] Add database schema migrations and automated PostgreSQL integration tests.
 
 **Acceptance:** the PostgreSQL-backed integration suite verifies two users, authentication, listing creation/discovery, blocked cross-owner edits, and provider-only acceptance. Hosting-level restart durability and backups still require environment-specific verification.
 
@@ -34,7 +36,10 @@ This roadmap is an implementation plan, not a claim that these features already 
 
 ## M3 — Operational readiness
 
-- [x] CI runs JavaScript syntax checks, tests, dependency audit, Compose validation, and a Docker build on pull requests.\n- [ ] Add formatting/lint rules and further security scanning.
+Current hosting blocker: the Render workspace already has an active free-tier PostgreSQL database, and the provider rejects creation of a second free database. The existing database belongs to another project and must not be reused. No paid database was created. Use a separate durable no-cost PostgreSQL provider or obtain explicit approval for a suitable paid plan before deploying the API.
+
+- [x] CI runs JavaScript syntax checks, tests, dependency audit, Compose validation, a Docker build, and committed-secret pattern scanning on pull requests.
+- [ ] Add formatting/lint rules and further security scanning.
 - [ ] Add environment-specific configuration and secret handling.
 - [ ] Add health/readiness checks, structured logs, error monitoring, and rollback instructions.
 - [ ] Run accessibility, performance, and security reviews.

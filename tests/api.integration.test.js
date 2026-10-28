@@ -20,6 +20,7 @@ test("API integration: registration, authentication, ownership and request workf
   const emailB = `learner-${suffix}@example.test`;
   let userA;
   let userB;
+  let userC;
   try {
     await pool.query(await readFile(new URL("../db/schema.sql", import.meta.url), "utf8"));
     await app.ready();
@@ -35,6 +36,13 @@ test("API integration: registration, authentication, ownership and request workf
     assert.equal(registerA.statusCode, 201, registerA.body);
     userA = registerA.json().user;
     const tokenA = registerA.json().token;
+    assert.ok(registerA.json().verificationUrl, "development registration should expose a verification link for local testing");
+    const verificationToken = new URL(registerA.json().verificationUrl).searchParams.get("verify");
+    const verified = await app.inject({ method: "POST", url: "/api/auth/verify-email", payload: { token: verificationToken } });
+    assert.equal(verified.statusCode, 200, verified.body);
+    assert.equal((await pool.query("SELECT email_verified FROM users WHERE id = $1", [userA.id])).rows[0].email_verified, true);
+    const replayVerification = await app.inject({ method: "POST", url: "/api/auth/verify-email", payload: { token: verificationToken } });
+    assert.equal(replayVerification.statusCode, 400, "verification tokens must be one-time use");
 
     const registerB = await app.inject({ method: "POST", url: "/api/auth/register", payload: {
       name: "Skill Learner", email: emailB, password: "Strong-passphrase-B2!"
@@ -97,12 +105,63 @@ test("API integration: registration, authentication, ownership and request workf
     assert.equal(visibleRequests.statusCode, 200);
     assert.equal(visibleRequests.json().items.some((item) => item.id === requestId), true);
 
+    const notifications = await app.inject({ method: "GET", url: "/api/notifications", headers: { authorization: `Bearer ${tokenA}` } });
+    assert.equal(notifications.statusCode, 200);
+    assert.equal(notifications.json().items.some((item) => item.type === "request_received"), true);
+    const unread = notifications.json().items.find((item) => item.type === "request_received");
+    const markedRead = await app.inject({ method: "PATCH", url: `/api/notifications/${unread.id}/read`, headers: { authorization: `Bearer ${tokenA}` }, payload: {} });
+    assert.equal(markedRead.statusCode, 200);
+
+    const report = await app.inject({ method: "POST", url: "/api/reports", headers: { authorization: `Bearer ${tokenA}` }, payload: {
+      targetType: "user", targetId: userB.id, reason: "misleading", details: "This is a test report with enough detail."
+    } });
+    assert.equal(report.statusCode, 201, report.body);
+    const duplicateReport = await app.inject({ method: "POST", url: "/api/reports", headers: { authorization: `Bearer ${tokenA}` }, payload: {
+      targetType: "user", targetId: userB.id, reason: "misleading", details: "This is a second duplicate report."
+    } });
+    assert.equal(duplicateReport.statusCode, 409);
+    const nonAdminReports = await app.inject({ method: "GET", url: "/api/admin/reports", headers: { authorization: `Bearer ${tokenA}` } });
+    assert.equal(nonAdminReports.statusCode, 403);
+    await pool.query("UPDATE users SET role = 'admin' WHERE id = $1", [userA.id]);
+    const adminReports = await app.inject({ method: "GET", url: "/api/admin/reports?status=open", headers: { authorization: `Bearer ${tokenA}` } });
+    assert.equal(adminReports.statusCode, 200, adminReports.body);
+    assert.equal(adminReports.json().items.some((item) => item.id === report.json().report.id), true);
+    const markReviewing = await app.inject({ method: "PATCH", url: "/api/admin/reports/" + report.json().report.id, headers: { authorization: `Bearer ${tokenA}` }, payload: { status: "reviewing", note: "Automated integration test review." } });
+    assert.equal(markReviewing.statusCode, 200, markReviewing.body);
+    const resolveReport = await app.inject({ method: "PATCH", url: "/api/admin/reports/" + report.json().report.id, headers: { authorization: `Bearer ${tokenA}` }, payload: { status: "resolved", note: "Automated integration test resolution." } });
+    assert.equal(resolveReport.statusCode, 200, resolveReport.body);
+
+    const forgot = await app.inject({ method: "POST", url: "/api/auth/forgot-password", payload: { email: emailA } });
+    assert.equal(forgot.statusCode, 200, forgot.body);
+    assert.ok(forgot.json().developmentUrl);
+    const resetToken = new URL(forgot.json().developmentUrl).searchParams.get("reset");
+    const reset = await app.inject({ method: "POST", url: "/api/auth/reset-password", payload: { token: resetToken, password: "New-Strong-passphrase-Z9!" } });
+    assert.equal(reset.statusCode, 200, reset.body);
+    const replayReset = await app.inject({ method: "POST", url: "/api/auth/reset-password", payload: { token: resetToken, password: "Another-Strong-passphrase-X8!" } });
+    assert.equal(replayReset.statusCode, 400, "password reset tokens must be one-time use");
+    const loginAfterReset = await app.inject({ method: "POST", url: "/api/auth/login", payload: { email: emailA, password: "New-Strong-passphrase-Z9!" } });
+    assert.equal(loginAfterReset.statusCode, 200, loginAfterReset.body);
+    const tokenAAfterReset = loginAfterReset.json().token;
+    const revokedOldSession = await app.inject({ method: "GET", url: "/api/skills/mine", headers: { authorization: `Bearer ${tokenA}` } });
+    assert.equal(revokedOldSession.statusCode, 401, "password reset must revoke existing sessions");
+
     await pool.query("UPDATE users SET status = 'suspended' WHERE id = $1", [userA.id]);
-    const suspendedToken = await app.inject({ method: "GET", url: "/api/skills/mine", headers: { authorization: `Bearer ${tokenA}` } });
+    const suspendedToken = await app.inject({ method: "GET", url: "/api/skills/mine", headers: { authorization: `Bearer ${tokenAAfterReset}` } });
     assert.equal(suspendedToken.statusCode, 401);
+    const registerC = await app.inject({ method: "POST", url: "/api/auth/register", payload: { name: "Delete Me", email: `delete-${suffix}@example.test`, password: "Strong-passphrase-C3!" } });
+    assert.equal(registerC.statusCode, 201, registerC.body);
+    userC = registerC.json().user;
+    const tokenC = registerC.json().token;
+    const badDelete = await app.inject({ method: "DELETE", url: "/api/account", headers: { authorization: `Bearer ${tokenC}` }, payload: { password: "wrong-password" } });
+    assert.equal(badDelete.statusCode, 401);
+    const deleteAccount = await app.inject({ method: "DELETE", url: "/api/account", headers: { authorization: `Bearer ${tokenC}` }, payload: { password: "Strong-passphrase-C3!" } });
+    assert.equal(deleteAccount.statusCode, 204, deleteAccount.body);
+    const deletedSession = await app.inject({ method: "GET", url: "/api/skills/mine", headers: { authorization: `Bearer ${tokenC}` } });
+    assert.equal(deletedSession.statusCode, 401);
   } finally {
     if (userA?.id) await pool.query("DELETE FROM users WHERE id = $1", [userA.id]).catch(() => {});
     if (userB?.id) await pool.query("DELETE FROM users WHERE id = $1", [userB.id]).catch(() => {});
+    if (userC?.id) await pool.query("DELETE FROM users WHERE id = $1", [userC.id]).catch(() => {});
     await app.close();
     await pool.end();
   }

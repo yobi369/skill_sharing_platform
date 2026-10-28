@@ -16,16 +16,20 @@
     <nav aria-label="Main navigation">
       <a href="#discover">Discover</a>
       <a href="#workspace" id="workspace-link" hidden>My workspace</a>
-      <a href="../skill_sharing_platform.html">Prototype preview</a>
     </nav>
     <span id="connection-status" class="connection-status" role="status">Checking API…</span>
   </header>
 
   <main id="top" class="page-shell">
+    <section class="preview-notice" role="status" aria-live="polite">
+      <strong>Preview environment</strong>
+      <span>The visual preview is online, but the API is not connected yet. Account, search, listing, and exchange controls are disabled until a backend is configured.</span>
+    </section>
+
     <section class="hero">
       <p class="eyebrow">Learn together. Grow by sharing.</p>
       <h1>Your next skill starts<br><span>with another person.</span></h1>
-      <p class="hero-copy">Find people who can teach what you want to learn, or publish a skill you are ready to share. Listings and requests are stored through the connected API.</p>
+      <p class="hero-copy">Find people who can teach what you want to learn, or publish a skill you are ready to share. Listings and requests are stored through the connected API when it is configured.</p>
       <a class="button button-primary" href="#discover">Explore skills <span aria-hidden="true">↓</span></a>
       <div class="hero-note"><span class="status-dot" aria-hidden="true"></span> No crypto wallet or payment required. This app does not process payments.</div>
     </section>
@@ -55,12 +59,33 @@
           <button class="button button-secondary" type="submit">Create account</button>
         </form>
       </div>
+      <div class="auth-grid account-help-grid">
+        <form id="forgot-form" class="form-card">
+          <h3>Forgot your password?</h3>
+          <label for="forgot-email">Account email</label>
+          <input id="forgot-email" name="email" type="email" autocomplete="email" maxlength="254" required>
+          <button class="button button-quiet" type="submit">Send reset instructions</button>
+        </form>
+        <form id="resend-verification-form" class="form-card">
+          <h3>Verify your email</h3>
+          <label for="verify-email">Account email</label>
+          <input id="verify-email" name="email" type="email" autocomplete="email" maxlength="254" required>
+          <button class="button button-quiet" type="submit">Resend verification</button>
+        </form>
+      </div>
+      <form id="reset-form" class="form-card recovery-form" hidden>
+        <h3>Choose a new password</h3>
+        <input id="reset-token" name="token" type="hidden">
+        <label for="reset-password">New password (12+ characters)</label>
+        <input id="reset-password" name="password" type="password" autocomplete="new-password" minlength="12" maxlength="128" required>
+        <button class="button button-primary" type="submit">Reset password</button>
+      </form>
       <p id="auth-message" class="form-message" role="status" aria-live="polite"></p>
     </section>
 
     <section id="account-panel" class="account-panel panel" hidden aria-labelledby="account-heading">
       <div><p class="eyebrow">Signed in</p><h2 id="account-heading">Your workspace</h2><p id="account-name" class="muted"></p></div>
-      <button id="signout-button" class="button button-quiet" type="button">Sign out</button>
+      <div class="button-row"><button id="delete-account-open" class="button button-quiet" type="button">Delete account</button><button id="signout-button" class="button button-quiet" type="button">Sign out</button></div>
     </section>
 
     <section id="discover" class="section-block">
@@ -106,6 +131,16 @@
           <div id="my-skills" class="stack-list"></div>
         </section>
       </div>
+      <section class="panel requests-panel" aria-labelledby="notifications-heading">
+        <div class="section-heading compact"><div><p class="eyebrow">Account activity</p><h3 id="notifications-heading">Notifications</h3></div><button id="refresh-notifications" class="button button-quiet" type="button">Refresh</button></div>
+        <div id="notification-list" class="stack-list"></div>
+      </section>
+      <section id="admin-panel" class="panel requests-panel" hidden aria-labelledby="admin-heading">
+        <div class="section-heading compact"><div><p class="eyebrow">Moderation</p><h3 id="admin-heading">Community reports</h3></div><button id="refresh-reports" class="button button-quiet" type="button">Refresh reports</button></div>
+        <label for="report-filter">Report status</label>
+        <select id="report-filter"><option value="open">Open</option><option value="reviewing">Reviewing</option><option value="resolved">Resolved</option><option value="dismissed">Dismissed</option></select>
+        <div id="admin-report-list" class="stack-list"></div>
+      </section>
       <section class="panel requests-panel" aria-labelledby="requests-heading">
         <h3 id="requests-heading">Skill exchange requests</h3>
         <div id="request-list" class="stack-list"></div>
@@ -143,7 +178,26 @@
     </form>
   </dialog>
 
-  <footer class="site-footer"><span>SkillChain</span><span>Skill-sharing prototype connected to the configured API. No payments or blockchain transactions.</span></footer>
+  <dialog id="delete-account-dialog" class="dialog">
+    <form id="delete-account-form" class="stack-form">
+      <div class="dialog-heading"><div><p class="eyebrow">Irreversible action</p><h2>Delete your account</h2></div><button type="button" class="icon-button" data-close-dialog="delete-account-dialog" aria-label="Close account deletion">×</button></div>
+      <p>This permanently deletes your profile, listings, requests, and account notifications. Open reports made by your account may be removed. This action cannot be undone.</p>
+      <label for="delete-account-password">Confirm your password</label><input id="delete-account-password" type="password" autocomplete="current-password" minlength="1" maxlength="128" required>
+      <p id="delete-account-message" class="form-message" role="status" aria-live="polite"></p>
+      <div class="button-row"><button type="button" class="button button-quiet" data-close-dialog="delete-account-dialog">Cancel</button><button type="submit" class="button button-primary">Permanently delete</button></div>
+    </form>
+  </dialog>
+  <dialog id="report-dialog" class="dialog">
+    <form id="report-form" class="stack-form">
+      <div class="dialog-heading"><div><p class="eyebrow">Community safety</p><h2>Report content</h2></div><button type="button" class="icon-button" data-close-dialog="report-dialog" aria-label="Close report form">×</button></div>
+      <input id="report-target-type" type="hidden"><input id="report-target-id" type="hidden">
+      <label for="report-reason">Reason</label><select id="report-reason" required><option value="spam">Spam</option><option value="harassment">Harassment</option><option value="fraud">Fraud</option><option value="unsafe">Unsafe</option><option value="misleading">Misleading</option><option value="other">Other</option></select>
+      <label for="report-details">What happened?</label><textarea id="report-details" minlength="10" maxlength="2000" rows="4" required></textarea>
+      <p id="report-message" class="form-message" role="status" aria-live="polite"></p>
+      <div class="button-row"><button type="button" class="button button-quiet" data-close-dialog="report-dialog">Cancel</button><button type="submit" class="button button-primary">Submit report</button></div>
+    </form>
+  </dialog>
+  <footer class="site-footer"><span>SkillChain</span><nav aria-label="Legal"><a href="./guidelines.html">Community guidelines</a><a href="./privacy.html">Privacy</a><a href="./terms.html">Terms</a></nav><span>No payments or blockchain transactions.</span></footer>
   <div id="global-message" class="global-message" role="status" aria-live="polite"></div>
 </body>
 </html>

@@ -9,8 +9,9 @@
     "dev": "node --watch src/server.js",
     "migrate": "node scripts/migrate.js",
     "test": "node --test",
-    "check:syntax": "node scripts/check-inline-scripts.cjs && node --check src/server.js && node --check scripts/migrate.js && node --check web/app.js && node --check web/config.js",
-    "check": "npm run check:syntax && npm test"
+    "check:syntax": "node scripts/check-inline-scripts.cjs && node --check src/server.js && node --check scripts/migrate.js && node --check scripts/promote-admin.js && node --check web/app.js && node --check web/config.js",
+    "check": "npm run check:syntax && npm test",
+    "promote-admin": "node scripts/promote-admin.js"
   },
   "engines": {
     "node": ">=20"
@@ -22,7 +23,8 @@
     "fastify": "^5.2.1",
     "pg": "^8.13.3",
     "bcryptjs": "^2.4.3",
-    "@fastify/cors": "^10.0.2"
+    "@fastify/cors": "^10.0.2",
+    "nodemailer": "^10.2.1"
   },
   "devDependencies": {}
 }

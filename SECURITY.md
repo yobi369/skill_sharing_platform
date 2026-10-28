@@ -35,3 +35,12 @@ These controls are an implementation baseline, not an independent security audit
 ## Safe development
 
 Use synthetic data and test networks only. Never test against systems you do not own or have explicit permission to assess. A passing CI run is not a security audit or proof of production readiness.
+
+
+## Account security operations
+
+- Production deployments should configure SMTP and set `REQUIRE_EMAIL_VERIFICATION=true`; test delivery before enforcing this flag.
+- Keep `FRONTEND_URL` on the exact trusted HTTPS origin/path used by the web client. Do not expose development verification or password-reset URLs.
+- Password reset and verification tokens are random, time-limited, one-use values; only SHA-256 token hashes are stored.
+- Admin promotion is an operator action restricted to active, email-verified accounts. Run it only from a trusted shell with a least-privilege database connection.
+- Review reports before suspending users or archiving skills. Record a short moderator note for consequential actions.
