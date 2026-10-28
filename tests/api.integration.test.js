@@ -121,6 +121,14 @@ test("API integration: registration, authentication, ownership and request workf
     assert.equal(duplicateReport.statusCode, 409);
     const nonAdminReports = await app.inject({ method: "GET", url: "/api/admin/reports", headers: { authorization: `Bearer ${tokenA}` } });
     assert.equal(nonAdminReports.statusCode, 403);
+    await pool.query("UPDATE users SET role = 'admin' WHERE id = $1", [userA.id]);
+    const adminReports = await app.inject({ method: "GET", url: "/api/admin/reports?status=open", headers: { authorization: `Bearer ${tokenA}` } });
+    assert.equal(adminReports.statusCode, 200, adminReports.body);
+    assert.equal(adminReports.json().items.some((item) => item.id === report.json().report.id), true);
+    const markReviewing = await app.inject({ method: "PATCH", url: "/api/admin/reports/" + report.json().report.id, headers: { authorization: `Bearer ${tokenA}` }, payload: { status: "reviewing", note: "Automated integration test review." } });
+    assert.equal(markReviewing.statusCode, 200, markReviewing.body);
+    const resolveReport = await app.inject({ method: "PATCH", url: "/api/admin/reports/" + report.json().report.id, headers: { authorization: `Bearer ${tokenA}` }, payload: { status: "resolved", note: "Automated integration test resolution." } });
+    assert.equal(resolveReport.statusCode, 200, resolveReport.body);
 
     const forgot = await app.inject({ method: "POST", url: "/api/auth/forgot-password", payload: { email: emailA } });
     assert.equal(forgot.statusCode, 200, forgot.body);
