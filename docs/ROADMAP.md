@@ -14,10 +14,10 @@ This roadmap is an implementation plan, not a claim that these features already 
 
 ## M1 — Core marketplace
 
-- [ ] Implement registration/login through a trusted identity system.
-- [ ] Add server-side profile and skill CRUD with ownership checks.
-- [ ] Add search, filters, pagination, and safe empty/error states.
-- [ ] Add skill requests with validated state transitions and notifications.
+- [x] Implement registration/login with password hashing, expiring bearer tokens, and an API-connected frontend.
+- [x] Add server-side skill CRUD with ownership checks and a frontend listing editor.
+- [x] Add search, category filters, pagination, and safe empty/error states in the API-connected frontend.
+- [x] Add skill requests with validated state transitions and a frontend request workflow.\n- [ ] Add notifications for request changes.
 - [ ] Add moderation/reporting and account suspension controls.
 - [ ] Add database migrations and automated integration tests.
 
