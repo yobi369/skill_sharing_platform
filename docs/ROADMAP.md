@@ -14,14 +14,14 @@ This roadmap is an implementation plan, not a claim that these features already 
 
 ## M1 — Core marketplace
 
-- [ ] Implement registration/login through a trusted identity system.
-- [ ] Add server-side profile and skill CRUD with ownership checks.
-- [ ] Add search, filters, pagination, and safe empty/error states.
-- [ ] Add skill requests with validated state transitions and notifications.
+- [x] Implement registration/login with password hashing, expiring bearer tokens, and an API-connected frontend.
+- [x] Add server-side skill CRUD with ownership checks and a frontend listing editor.
+- [x] Add search, category filters, pagination, and safe empty/error states in the API-connected frontend.
+- [x] Add skill requests with validated state transitions and a frontend request workflow.\n- [ ] Add notifications for request changes.
 - [ ] Add moderation/reporting and account suspension controls.
 - [ ] Add database migrations and automated integration tests.
 
-**Acceptance:** two independent test users can create listings and request exchanges; one user cannot read or modify another user's private records; data survives service restart.
+**Acceptance:** the PostgreSQL-backed integration suite verifies two users, authentication, listing creation/discovery, blocked cross-owner edits, and provider-only acceptance. Hosting-level restart durability and backups still require environment-specific verification.
 
 ## M2 — Learning workflow and trust
 
@@ -34,7 +34,7 @@ This roadmap is an implementation plan, not a claim that these features already 
 
 ## M3 — Operational readiness
 
-- [ ] CI runs formatting/lint, tests, dependency checks, and build checks on pull requests.
+- [x] CI runs JavaScript syntax checks, tests, dependency audit, Compose validation, and a Docker build on pull requests.\n- [ ] Add formatting/lint rules and further security scanning.
 - [ ] Add environment-specific configuration and secret handling.
 - [ ] Add health/readiness checks, structured logs, error monitoring, and rollback instructions.
 - [ ] Run accessibility, performance, and security reviews.

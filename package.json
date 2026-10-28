@@ -1,13 +1,28 @@
 {
-  "name": "skillchain-prototype",
-  "version": "0.2.0",
+  "name": "skillchain-marketplace",
+  "version": "0.3.0",
   "private": true,
-  "description": "SkillChain skill-sharing marketplace prototype",
+  "description": "SkillChain skill-sharing marketplace prototype and API",
+  "type": "module",
   "scripts": {
+    "start": "node src/server.js",
+    "dev": "node --watch src/server.js",
+    "migrate": "node scripts/migrate.js",
     "test": "node --test",
-    "check:syntax": "node scripts/check-inline-scripts.cjs"
+    "check:syntax": "node scripts/check-inline-scripts.cjs && node --check src/server.js && node --check scripts/migrate.js && node --check web/app.js && node --check web/config.js",
+    "check": "npm run check:syntax && npm test"
   },
   "engines": {
     "node": ">=20"
-  }
+  },
+  "dependencies": {
+    "@fastify/helmet": "^13.0.1",
+    "@fastify/jwt": "^10.2.5",
+    "@fastify/rate-limit": "^10.2.1",
+    "fastify": "^5.2.1",
+    "pg": "^8.13.3",
+    "bcryptjs": "^2.4.3",
+    "@fastify/cors": "^10.0.2"
+  },
+  "devDependencies": {}
 }
