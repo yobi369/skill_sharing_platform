@@ -1,0 +1,13 @@
+{
+  "name": "skillchain-prototype",
+  "version": "0.2.0",
+  "private": true,
+  "description": "SkillChain skill-sharing marketplace prototype",
+  "scripts": {
+    "test": "node --test",
+    "check:syntax": "node scripts/check-inline-scripts.cjs"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

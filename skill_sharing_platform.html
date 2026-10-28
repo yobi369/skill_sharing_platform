@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SkillChain - Decentralized Skill-Sharing Platform</title>
+    <title>SkillChain — Skill-Sharing Marketplace Prototype</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
     <style>
         * {
@@ -79,6 +79,18 @@
             margin-bottom: 20px;
         }
 
+        .demo-notice {
+            margin: 0 0 24px; padding: 14px 18px;
+            border: 1px solid rgba(255, 193, 7, 0.45); border-radius: 12px;
+            background: rgba(255, 193, 7, 0.10); color: #ffe7a3; line-height: 1.55;
+        }
+        .demo-notice strong { color: #fff0bd; }
+
+        :focus-visible { outline: 3px solid #ffd166; outline-offset: 3px; }
+
+        @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; scroll-behavior: auto !important; transition-duration: 0.01ms !important; }
+        }
         .wallet-status {
             display: inline-flex;
             align-items: center;
@@ -396,22 +408,27 @@
     <div class="stars" id="stars"></div>
     <div class="floating-particles" id="particles"></div>
     
+    <noscript><div class="demo-notice">JavaScript is required for this interactive prototype. No live account or payment service is available.</div></noscript>
     <div class="container">
         <div class="header">
             <div class="logo">⛓️ SkillChain</div>
-            <div class="tagline">Decentralized Skill-Sharing Platform</div>
-            <div class="wallet-status">
-                <div class="wallet-indicator"></div>
-                <span>Wallet Connected | Balance: <strong>1,250 USDC</strong></span>
+            <div class="tagline">Peer-to-peer skill-sharing marketplace prototype</div>
+            <div class="wallet-status" role="status" aria-label="Demo wallet status">
+                <div class="wallet-indicator" style="background:#ffc107"></div>
+                <span>Demo mode · No wallet connected · No real funds</span>
             </div>
         </div>
 
-        <div class="nav-tabs">
-            <button class="nav-tab active" onclick="showSection('dashboard')">Dashboard</button>
-            <button class="nav-tab" onclick="showSection('browse-tasks')">Browse Tasks</button>
-            <button class="nav-tab" onclick="showSection('find-talent')">Find Talent</button>
-            <button class="nav-tab" onclick="showSection('post-task')">Post Task</button>
-            <button class="nav-tab" onclick="showSection('profile')">Profile</button>
+        <aside class="demo-notice" role="note" aria-label="Prototype notice">
+            <strong>Interactive prototype — demo data only.</strong>
+            Marketplace totals, profiles, match scores, applications, messages, balances, and transaction activity are simulated in this browser. No account, payment, wallet, smart contract, or blockchain is connected. Do not enter sensitive information or rely on this demo for transactions.
+        </aside>
+        <div class="nav-tabs" role="tablist" aria-label="SkillChain demo sections">
+            <button type="button" class="nav-tab active" role="tab" aria-selected="true" aria-controls="dashboard" onclick="showSection('dashboard', this)">Dashboard</button>
+            <button type="button" class="nav-tab" role="tab" aria-selected="false" aria-controls="browse-tasks" onclick="showSection('browse-tasks', this)">Browse Tasks</button>
+            <button type="button" class="nav-tab" role="tab" aria-selected="false" aria-controls="find-talent" onclick="showSection('find-talent', this)">Find Talent</button>
+            <button type="button" class="nav-tab" role="tab" aria-selected="false" aria-controls="post-task" onclick="showSection('post-task', this)">Post Task</button>
+            <button type="button" class="nav-tab" role="tab" aria-selected="false" aria-controls="profile" onclick="showSection('profile', this)">Profile</button>
         </div>
 
         <!-- Dashboard Section -->
@@ -419,38 +436,38 @@
             <div class="stats-grid">
                 <div class="stat-card">
                     <div class="stat-value">47</div>
-                    <div>Active Tasks</div>
+                    <div>Sample active tasks <small>(demo)</small></div>
                 </div>
                 <div class="stat-card">
                     <div class="stat-value">3,420</div>
-                    <div>Total Freelancers</div>
+                    <div>Sample freelancer count <small>(demo)</small></div>
                 </div>
                 <div class="stat-card">
                     <div class="stat-value">$2.4M</div>
-                    <div>Volume (24h)</div>
+                    <div>Illustrative volume <small>(not real activity)</small></div>
                 </div>
                 <div class="stat-card">
                     <div class="stat-value">99.2%</div>
-                    <div>Success Rate</div>
+                    <div>Illustrative rate <small>(not measured)</small></div>
                 </div>
             </div>
 
             <div class="card">
-                <h3>📈 Transaction History</h3>
+                <h3>📈 Example Activity (Simulated — Not Real Transactions)</h3>
                 <div class="blockchain-tx">
-                    <div><strong>Payment Received</strong> - Dec 28, 2024</div>
+                    <div><strong>Example payment event</strong> — sample date only</div>
                     <div>Task: "DeFi Protocol Frontend" | Amount: 850 USDC</div>
-                    <div>Tx: 0x7a9b4c8d2e1f3g5h6i...</div>
+                    <div>Transaction reference: placeholder (not a blockchain hash)</div>
                 </div>
                 <div class="blockchain-tx">
-                    <div><strong>Payment Received</strong> - Dec 25, 2024</div>
+                    <div><strong>Example payment event</strong> — sample date only</div>
                     <div>Task: "Smart Contract Optimization" | Amount: 600 USDC</div>
-                    <div>Tx: 0x2f8e5a1c9b7d4g3h...</div>
+                    <div>Transaction reference: placeholder (not a blockchain hash)</div>
                 </div>
                 <div class="blockchain-tx">
-                    <div><strong>Reputation Updated</strong> - Dec 23, 2024</div>
+                    <div><strong>Example reputation event</strong> — sample data only</div>
                     <div>New Rating: 4.7/5.0 | Total Reviews: 23</div>
-                    <div>Block: #1,845,672</div>
+                    <div>Block number: illustrative placeholder (not verified on-chain)</div>
                 </div>
             </div>
         </div>
@@ -483,13 +500,11 @@
             createParticles();
             showNotification("Welcome to SkillChain! 🚀");
             
-            // Simulate real-time updates
-            setInterval(updatePlatformStats, 5000);
-            setInterval(updateBlockchainActivity, 8000);
+            // No live network updates are simulated; this is a static demo.
         });
 
         // Navigation functions
-        function showSection(sectionId) {
+        function showSection(sectionId, clickedTab) {
             // Hide all sections
             document.querySelectorAll('.section').forEach(section => {
                 section.classList.remove('active');
@@ -501,116 +516,51 @@
             });
             
             // Show selected section
-            document.getElementById(sectionId).classList.add('active');
-            
-            // Add active class to clicked tab
-            event.target.classList.add('active');
+            const nextSection = document.getElementById(sectionId);
+            if (!nextSection) return;
+            nextSection.classList.add('active');
+            document.querySelectorAll('.nav-tab').forEach(tab => {
+                const selected = tab === clickedTab;
+                tab.setAttribute('aria-selected', String(selected));
+                if (selected) tab.classList.add('active');
+            });
         }
 
-        // AI Matching Algorithm Simulation
+        // DEMO ONLY: placeholder scores, not an AI service or verified recommendations.
         function findMatches() {
-            const userSkills = document.getElementById('userSkills').value.toLowerCase().split(',').map(s => s.trim());
-            showNotification("🤖 AI analyzing your skills...");
-            
-            setTimeout(() => {
-                // Simulate AI processing
-                const tasks = document.querySelectorAll('.task-item');
-                tasks.forEach((task, index) => {
-                    const matchScore = Math.floor(Math.random() * 20) + 75; // 75-95% match
-                    const matchIndicator = task.querySelector('.ai-match-indicator span:last-child');
-                    matchIndicator.textContent = `${matchScore}% Match`;
-                    
-                    // Update match color based on score
-                    const indicator = task.querySelector('.ai-match-indicator');
-                    if (matchScore >= 90) {
-                        indicator.style.background = 'rgba(0, 255, 136, 0.2)';
-                        indicator.style.color = '#00ff88';
-                    } else if (matchScore >= 80) {
-                        indicator.style.background = 'rgba(255, 215, 0, 0.2)';
-                        indicator.style.color = '#ffd700';
-                    } else {
-                        indicator.style.background = 'rgba(255, 136, 0, 0.2)';
-                        indicator.style.color = '#ff8800';
-                    }
-                });
-                
-                showNotification("✅ Perfect matches found! Tasks ranked by compatibility.");
-            }, 1500);
+            const input = document.getElementById('userSkills');
+            if (!input || !input.value.trim()) {
+                showNotification("Enter skills first to preview sample matches.");
+                return;
+            }
+            showNotification("Demo preview: showing illustrative match scores, not AI recommendations.");
+            const tasks = document.querySelectorAll('.task-item');
+            tasks.forEach((task) => {
+                const score = task.querySelector('.ai-match-indicator span:last-child');
+                if (score) score.textContent = "Sample match";
+            });
         }
-
-        // Task application function
         function applyToTask(taskName) {
-            showNotification(`📝 Application submitted for "${taskName}"!`);
-            
-            // Simulate blockchain transaction
-            setTimeout(() => {
-                const txHash = generateTxHash();
-                showNotification(`⛓️ Application recorded on blockchain: ${txHash.substring(0, 10)}...`);
-            }, 2000);
+            showNotification(`Demo only: application for "${taskName}" was not sent or saved.`);
         }
-
-        // Freelancer search function
         function searchFreelancers() {
-            showNotification("🔍 Searching for perfect freelancers...");
-            
-            setTimeout(() => {
-                // Simulate AI matching
-                const freelancers = document.querySelectorAll('.freelancer-item');
-                freelancers.forEach(freelancer => {
-                    const matchScore = Math.floor(Math.random() * 15) + 80; // 80-95% match
-                    const matchIndicator = freelancer.querySelector('.ai-match-indicator span:last-child');
-                    matchIndicator.textContent = `${matchScore}% Match`;
-                });
-                
-                showNotification("✅ Top-rated freelancers found based on your requirements!");
-            }, 1000);
+            showNotification("Demo only: freelancer search is not connected to a live service.");
+            document.querySelectorAll('.freelancer-item .ai-match-indicator span:last-child').forEach((el) => {
+                el.textContent = "Sample profile";
+            });
         }
-
-        // Contact freelancer function
         function contactFreelancer(name) {
-            showNotification(`📧 Message sent to ${name}!`);
-            
-            // Simulate smart contract escrow creation
-            setTimeout(() => {
-                showNotification("🔐 Escrow contract initialized for secure payment.");
-            }, 1500);
+            showNotification(`Demo only: no message was sent to ${name}.`);
         }
-
-        // Task posting function
         function postTask() {
-            showNotification("🚀 Deploying task to blockchain...");
-            
-            setTimeout(() => {
-                const txHash = generateTxHash();
-                const blockNumber = Math.floor(Math.random() * 1000) + 1847000;
-                
-                showNotification(`⛓️ Task contract deployed! Block: #${blockNumber}`);
-                
-                // Add to blockchain activity
-                const activityDiv = document.querySelector('#dashboard .card:last-child');
-                const newActivity = document.createElement('div');
-                newActivity.className = 'blockchain-tx';
-                newActivity.innerHTML = `
-                    <div><strong>Block #${blockNumber}</strong></div>
-                    <div>New Task Posted: "Custom Task"</div>
-                    <div>Escrow: Auto-generated | Gas: 0.004 ETH</div>
-                    <div>Hash: ${txHash.substring(0, 16)}...</div>
-                `;
-                activityDiv.insertBefore(newActivity, activityDiv.children[1]);
-            }, 2000);
+            showNotification("Demo only: task posting is not connected to a server. Nothing was published or saved.");
         }
-
-        // Budget slider update
         function updateBudget(value) {
             document.getElementById('budgetDisplay').textContent = `${value} USDC`;
         }
 
         // Utility functions
-        function generateTxHash() {
-            return '0x' + Array.from({length: 64}, () => Math.floor(Math.random() * 16).toString(16)).join('');
-        }
-
-        function showNotification(message) {
+                function showNotification(message) {
             const notification = document.getElementById('notification');
             const notificationText = document.getElementById('notificationText');
             
@@ -624,40 +574,11 @@
 
         // Real-time platform updates
         function updatePlatformStats() {
-            // Simulate platform growth
-            platformStats.activeTasks += Math.floor(Math.random() * 3) - 1;
-            platformStats.totalFreelancers += Math.floor(Math.random() * 5);
-            platformStats.dailyVolume += Math.floor(Math.random() * 10000) - 5000;
-            
-            // Update DOM
-            const statCards = document.querySelectorAll('.stat-value');
-            if (statCards.length >= 4) {
-                statCards[0].textContent = platformStats.activeTasks;
-                statCards[1].textContent = platformStats.totalFreelancers.toLocaleString();
-                statCards[2].textContent = `${(platformStats.dailyVolume / 1000000).toFixed(1)}M`;
-                statCards[3].textContent = `${platformStats.successRate}%`;
-            }
+            // Intentionally disabled: no live platform statistics are available in this prototype.
         }
-
         function updateBlockchainActivity() {
-            // Simulate new blockchain transactions
-            const activities = [
-                "Smart Contract Deployed",
-                "Payment Processed",
-                "Reputation Updated",
-                "Task Completed",
-                "Freelancer Verified",
-                "Dispute Resolved"
-            ];
-            
-            const randomActivity = activities[Math.floor(Math.random() * activities.length)];
-            const blockNumber = Math.floor(Math.random() * 1000) + 1847000;
-            const txHash = generateTxHash();
-            
-            // Could add new activity to the dashboard here
+            // Intentionally disabled: no blockchain provider is configured.
         }
-
-        // Visual effects
         function createStars() {
             const starsContainer = document.getElementById('stars');
             const starCount = 100;
@@ -689,46 +610,14 @@
 
         // Simulate smart contract interactions
         function simulateSmartContract(action, data) {
-            return new Promise((resolve) => {
-                setTimeout(() => {
-                    const result = {
-                        txHash: generateTxHash(),
-                        blockNumber: Math.floor(Math.random() * 1000) + 1847000,
-                        gasUsed: (Math.random() * 0.01 + 0.001).toFixed(6),
-                        status: 'success',
-                        action: action,
-                        data: data
-                    };
-                    resolve(result);
-                }, Math.random() * 2000 + 1000);
-            });
+            return Promise.reject(new Error("Smart-contract actions are disabled in demo mode."));
         }
-
-        // Reputation system simulation
         function updateReputation(userId, rating) {
-            // Simulate blockchain-based reputation update
-            simulateSmartContract('updateReputation', { userId, rating })
-                .then(result => {
-                    showNotification(`⭐ Reputation updated! Tx: ${result.txHash.substring(0, 10)}...`);
-                });
+            showNotification("Demo only: reputation is not updated or recorded.");
         }
-
-        // Payment processing simulation
         function processPayment(amount, recipient) {
-            showNotification(`💰 Processing payment of ${amount} USDC...`);
-            
-            simulateSmartContract('processPayment', { amount, recipient })
-                .then(result => {
-                    showNotification(`✅ Payment successful! Gas used: ${result.gasUsed} ETH`);
-                    
-                    // Update user balance
-                    currentUser.balance -= amount;
-                    document.querySelector('.wallet-status span').innerHTML = 
-                        `Wallet Connected | Balance: <strong>${currentUser.balance.toLocaleString()} USDC</strong>`;
-                });
+            showNotification("Demo only: payments are disabled. No funds were transferred.");
         }
-
-        // Advanced AI matching simulation
         function calculateSkillMatch(userSkills, taskSkills) {
             const userSet = new Set(userSkills.map(s => s.toLowerCase()));
             const taskSet = new Set(taskSkills.map(s => s.toLowerCase()));
@@ -763,7 +652,7 @@
                 <div class="blockchain-tx">
                     <div><strong>Block #1,847,293</strong></div>
                     <div>Task Completed: "Logo Design for DeFi Protocol"</div>
-                    <div>Payment: 150 USDC | Gas: 0.003 ETH</div>
+                    <div>Example only: no payment or gas fee is charged.</div>
                     <div>Hash: 0xa7b4c8d9e2f1...</div>
                 </div>
                 <div class="blockchain-tx">
@@ -778,12 +667,12 @@
         <!-- Browse Tasks Section -->
         <div id="browse-tasks" class="section">
             <div class="card">
-                <h3>🔍 AI-Powered Task Matching</h3>
+                <h3>🔍 Sample Task Match Preview</h3>
                 <div class="form-group">
                     <label>Your Skills</label>
                     <input type="text" class="form-control" id="userSkills" placeholder="e.g., JavaScript, React, Node.js" value="JavaScript, React, Blockchain">
                 </div>
-                <button class="btn btn-primary" onclick="findMatches()">Find Perfect Matches</button>
+                <button class="btn btn-primary" onclick="findMatches()">Preview Sample Matches</button>
             </div>
 
             <div id="taskResults">
@@ -982,7 +871,7 @@
             <div class="card">
                 <h3>💡 Smart Contract Preview</h3>
                 <div class="blockchain-tx">
-                    <div><strong>Task Contract Template</strong></div>
+                    <div><strong>Illustrative Contract Snippet — Not Deployed or Audited</strong></div>
                     <div>pragma solidity ^0.8.0;</div>
                     <div>contract TaskEscrow {</div>
                     <div>&nbsp;&nbsp;address client = msg.sender;</div>
