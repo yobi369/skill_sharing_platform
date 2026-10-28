@@ -5,9 +5,18 @@ import jwt from "@fastify/jwt";
 import rateLimit from "@fastify/rate-limit";
 import pg from "pg";
 import bcrypt from "bcryptjs";
-import { randomUUID } from "node:crypto";
+import { randomUUID, randomBytes, createHash } from "node:crypto";
+import nodemailer from "nodemailer";
 
 const { Pool } = pg;
+
+const frontendUrl = (process.env.FRONTEND_URL ?? "http://localhost:8000/web/").replace(/\/+$/, "");
+const smtpReady = Boolean(process.env.SMTP_HOST && process.env.SMTP_PORT && process.env.EMAIL_FROM);
+const mailer = smtpReady ? nodemailer.createTransport({ host: process.env.SMTP_HOST, port: Number(process.env.SMTP_PORT), secure: process.env.SMTP_SECURE === "true", auth: process.env.SMTP_USER ? { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS } : undefined, connectionTimeout: 5000, greetingTimeout: 5000, socketTimeout: 10000 }) : null;
+const hashToken = (token) => createHash("sha256").update(token).digest("hex");
+const newToken = () => randomBytes(32).toString("base64url");
+async function sendAccountEmail(to, subject, text) { if (!mailer) return false; await mailer.sendMail({ from: process.env.EMAIL_FROM, to, subject, text }); return true; }
+async function createNotification(pool, userId, type, title, body, href = "/web/#workspace") { if (!userId) return; await pool.query("INSERT INTO notifications (user_id, type, title, body, href) VALUES ($1, $2, $3, $4, $5)", [userId, type, title, body, href]); }
 const emailPattern = "^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$";
 const idSchema = { type: "string", format: "uuid" };
 
@@ -44,9 +53,9 @@ export function buildApp({ pool: suppliedPool, jwtSecret = process.env.JWT_SECRE
       return reply.code(401).send({ error: "unauthorized" });
     }
     if (!request.user?.sub) return reply.code(401).send({ error: "unauthorized" });
-    const activeUser = await pool.query("SELECT id, email FROM users WHERE id = $1 AND status = 'active'", [request.user.sub]);
+    const activeUser = await pool.query("SELECT id, name, email, role FROM users WHERE id = $1 AND status = 'active'", [request.user.sub]);
     if (!activeUser.rowCount) return reply.code(401).send({ error: "unauthorized" });
-    request.identity = { id: activeUser.rows[0].id, email: activeUser.rows[0].email };
+    request.identity = { id: activeUser.rows[0].id, name: activeUser.rows[0].name, email: activeUser.rows[0].email, role: activeUser.rows[0].role };
   });
   app.addHook("onClose", async () => { if (ownsPool) await pool.end(); });
 
