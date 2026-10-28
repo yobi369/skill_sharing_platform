@@ -12,6 +12,23 @@ permissions:
 jobs:
   repository-checks:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: skillchain_test
+          POSTGRES_USER: skillchain
+          POSTGRES_PASSWORD: skillchain_test_password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U skillchain -d skillchain_test"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      DATABASE_URL: postgres://skillchain:skillchain_test_password@localhost:5432/skillchain_test
+      JWT_SECRET: ci-test-secret-that-is-long-enough-for-hmac-signing
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
@@ -20,6 +37,10 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
+          cache: npm
+
+      - name: Install locked dependencies
+        run: npm install --package-lock-only && npm install
 
       - name: Validate required project files
         shell: bash
@@ -31,25 +52,33 @@ jobs:
           test -s docs/ROADMAP.md
           test -s CONTRIBUTING.md
           test -s package.json
+          test -s package-lock.json
+          test -s db/schema.sql
+          test -s src/server.js
+          test -s tests/api.integration.test.js
           test -s tests/prototype-contract.test.cjs
           test -s scripts/check-inline-scripts.cjs
+          test -s scripts/migrate.js
           test -s skill_sharing_platform.html
           grep -qi '<!DOCTYPE html' skill_sharing_platform.html
           grep -qi '<html' skill_sharing_platform.html
           grep -qi '</html>' skill_sharing_platform.html
-          echo "Required documentation and HTML structure checks passed."
+          echo "Required documentation, API, database, and HTML checks passed."
 
-      - name: Verify embedded JavaScript syntax
+      - name: Apply database schema
+        run: npm run migrate
+
+      - name: Verify JavaScript syntax
         run: npm run check:syntax
 
-      - name: Run prototype contract tests
+      - name: Run prototype and API integration tests
         run: npm test
 
       - name: Check for obvious committed secret patterns
         shell: bash
         run: |
           set -euo pipefail
-          if grep -RInE --exclude-dir=.git --exclude-dir=.github --exclude='*.pdf' '(BEGIN (RSA|EC|OPENSSH|PRIVATE) KEY|AKIA[0-9A-Z]{16}|gh[pousr]_[A-Za-z0-9]{30,})' .; then
+          if grep -RInE --exclude-dir=.git --exclude-dir=.github --exclude-dir=node_modules --exclude='*.pdf' '(BEGIN (RSA|EC|OPENSSH|PRIVATE) KEY|AKIA[0-9A-Z]{16}|gh[pousr]_[A-Za-z0-9]{30,})' .; then
             echo "::error::Potential secret pattern detected. Review the match before proceeding."
             exit 1
           fi
