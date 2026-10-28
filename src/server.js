@@ -283,6 +283,7 @@ export function buildApp({ pool: suppliedPool, jwtSecret = process.env.JWT_SECRE
         "INSERT INTO skill_requests (skill_id, requester_id, provider_id, message) VALUES ($1, $2, $3, $4) RETURNING id, skill_id, requester_id, provider_id, message, status, created_at, updated_at",
         [request.params.id, request.identity.id, skill.rows[0].owner_id, request.body.message.trim()]
       );
+      await createNotification(pool, skill.rows[0].owner_id, "request_received", "New skill request", request.identity.name + " requested to learn your skill.", "/web/#workspace");
       return reply.code(201).send({ request: result.rows[0] });
     } catch (error) {
       if (error.code === "23505") return reply.code(409).send({ error: "request_already_exists" });
@@ -308,7 +309,10 @@ export function buildApp({ pool: suppliedPool, jwtSecret = process.env.JWT_SECRE
       [status, request.params.id, request.identity.id]
     );
     if (!result.rowCount) return reply.code(404).send({ error: "request_not_found_or_transition_forbidden" });
-    return { request: result.rows[0] };
+    const changed = result.rows[0];
+    const recipient = status === "cancelled" ? changed.provider_id : changed.requester_id;
+    await createNotification(pool, recipient, "request_" + status, "Skill request " + status, "A skill exchange request was " + status + ".", "/web/#workspace");
+    return { request: changed };
   });
 
 
