@@ -34,7 +34,7 @@ A static frontend can be hosted on Vercel or another static host. The API requir
 
 Render's free PostgreSQL databases have an expiry date and are not a durable production database. A free web service may sleep or have cold starts. Do not treat a temporary free database as safe for real user accounts, listings, messages, or moderation records. No paid resources should be created without explicit authorization. If no durable no-cost database is available, keep the public deployment in preview/staging mode and do not invite real users to store data.
 
-No SkillChain deployment is considered live merely because a host project exists or a build succeeds. Record the actual frontend URL, API URL, database plan/expiry, deployed commit, and health-check results here only after independently verifying them.
+The static frontend preview is deployed at https://skillchain-preview.onrender.com (Render service `srv-dbh5bjl9fdbs738d3lsg`); the provider reports its latest deployment as live on commit `2ccaa80ef0d4dd78a64a0d0c6900baeb647696c4`. This confirms provider deployment status only: independent external HTTP/browser verification has not completed, no API is connected, and this is not an end-to-end marketplace. Record API/database details only after they are configured and independently verified.
 
 ## Release sequence
 
@@ -49,8 +49,9 @@ No SkillChain deployment is considered live merely because a host project exists
 
 ## Verification record
 
-- Repository quality run: [GitHub Actions run 40758231879](https://github.com/yobi369/skill_sharing_platform/actions/runs/40758231879) — passed for commit `08a88812e5637f127b759da1a7910ab209ce53b0`.
-- Public deployment: not yet verified.
+- Repository quality run: [GitHub Actions run 40759320531](https://github.com/yobi369/skill_sharing_platform/actions/runs/40759320531) — passed for commit `ca88320f516624f30566760b6a97b8db9a18ad35`. This run predates the subsequent preview-status UI commits.
+- Static preview: Render reports `https://skillchain-preview.onrender.com` as live on commit `2ccaa80ef0d4dd78a64a0d0c6900baeb647696c4`; external HTTP/browser verification remains outstanding.
+- API service and database: not deployed/configured; frontend API origin is intentionally unset.
 - SMTP delivery: not yet configured/verified.
 - Durable production database and backup/restore: not yet verified.
 - External browser E2E and independent security review: outstanding.
