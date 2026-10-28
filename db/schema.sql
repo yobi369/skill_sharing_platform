@@ -89,3 +89,4 @@ CREATE TABLE IF NOT EXISTS reports (
 );
 CREATE INDEX IF NOT EXISTS reports_status_created_idx ON reports (status, created_at DESC);
 CREATE INDEX IF NOT EXISTS reports_target_idx ON reports (target_type, target_id);
+CREATE UNIQUE INDEX IF NOT EXISTS one_open_report_per_reporter_target ON reports (reporter_id, target_type, target_id) WHERE status IN ('open', 'reviewing');
