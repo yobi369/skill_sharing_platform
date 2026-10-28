@@ -35,6 +35,13 @@ test("API integration: registration, authentication, ownership and request workf
     assert.equal(registerA.statusCode, 201, registerA.body);
     userA = registerA.json().user;
     const tokenA = registerA.json().token;
+    assert.ok(registerA.json().verificationUrl, "development registration should expose a verification link for local testing");
+    const verificationToken = new URL(registerA.json().verificationUrl).searchParams.get("verify");
+    const verified = await app.inject({ method: "POST", url: "/api/auth/verify-email", payload: { token: verificationToken } });
+    assert.equal(verified.statusCode, 200, verified.body);
+    assert.equal((await pool.query("SELECT email_verified FROM users WHERE id = $1", [userA.id])).rows[0].email_verified, true);
+    const replayVerification = await app.inject({ method: "POST", url: "/api/auth/verify-email", payload: { token: verificationToken } });
+    assert.equal(replayVerification.statusCode, 400, "verification tokens must be one-time use");
 
     const registerB = await app.inject({ method: "POST", url: "/api/auth/register", payload: {
       name: "Skill Learner", email: emailB, password: "Strong-passphrase-B2!"
@@ -96,6 +103,35 @@ test("API integration: registration, authentication, ownership and request workf
     const visibleRequests = await app.inject({ method: "GET", url: "/api/requests", headers: { authorization: `Bearer ${tokenB}` } });
     assert.equal(visibleRequests.statusCode, 200);
     assert.equal(visibleRequests.json().items.some((item) => item.id === requestId), true);
+
+    const notifications = await app.inject({ method: "GET", url: "/api/notifications", headers: { authorization: `Bearer ${tokenA}` } });
+    assert.equal(notifications.statusCode, 200);
+    assert.equal(notifications.json().items.some((item) => item.type === "request_received"), true);
+    const unread = notifications.json().items.find((item) => item.type === "request_received");
+    const markedRead = await app.inject({ method: "PATCH", url: `/api/notifications/${unread.id}/read`, headers: { authorization: `Bearer ${tokenA}` }, payload: {} });
+    assert.equal(markedRead.statusCode, 200);
+
+    const report = await app.inject({ method: "POST", url: "/api/reports", headers: { authorization: `Bearer ${tokenA}` }, payload: {
+      targetType: "user", targetId: userB.id, reason: "misleading", details: "This is a test report with enough detail."
+    } });
+    assert.equal(report.statusCode, 201, report.body);
+    const duplicateReport = await app.inject({ method: "POST", url: "/api/reports", headers: { authorization: `Bearer ${tokenA}` }, payload: {
+      targetType: "user", targetId: userB.id, reason: "misleading", details: "This is a second duplicate report."
+    } });
+    assert.equal(duplicateReport.statusCode, 409);
+    const nonAdminReports = await app.inject({ method: "GET", url: "/api/admin/reports", headers: { authorization: `Bearer ${tokenA}` } });
+    assert.equal(nonAdminReports.statusCode, 403);
+
+    const forgot = await app.inject({ method: "POST", url: "/api/auth/forgot-password", payload: { email: emailA } });
+    assert.equal(forgot.statusCode, 200, forgot.body);
+    assert.ok(forgot.json().developmentUrl);
+    const resetToken = new URL(forgot.json().developmentUrl).searchParams.get("reset");
+    const reset = await app.inject({ method: "POST", url: "/api/auth/reset-password", payload: { token: resetToken, password: "New-Strong-passphrase-Z9!" } });
+    assert.equal(reset.statusCode, 200, reset.body);
+    const replayReset = await app.inject({ method: "POST", url: "/api/auth/reset-password", payload: { token: resetToken, password: "Another-Strong-passphrase-X8!" } });
+    assert.equal(replayReset.statusCode, 400, "password reset tokens must be one-time use");
+    const loginAfterReset = await app.inject({ method: "POST", url: "/api/auth/login", payload: { email: emailA, password: "New-Strong-passphrase-Z9!" } });
+    assert.equal(loginAfterReset.statusCode, 200, loginAfterReset.body);
 
     await pool.query("UPDATE users SET status = 'suspended' WHERE id = $1", [userA.id]);
     const suspendedToken = await app.inject({ method: "GET", url: "/api/skills/mine", headers: { authorization: `Bearer ${tokenA}` } });
