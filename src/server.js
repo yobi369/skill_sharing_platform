@@ -12,8 +12,8 @@ const emailPattern = "^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$";
 const idSchema = { type: "string", format: "uuid" };
 
 export function buildApp({ pool: suppliedPool, jwtSecret = process.env.JWT_SECRET, logger = false } = {}) {
-  if (!jwtSecret || Buffer.byteLength(jwtSecret) < 32) {
-    throw new Error("JWT_SECRET must be configured with at least 32 bytes.");
+  if (!jwtSecret || Buffer.byteLength(jwtSecret) < 32 || /^(replace-with|change-me|example)/i.test(jwtSecret)) {
+    throw new Error("JWT_SECRET must be a unique, non-placeholder secret of at least 32 bytes.");
   }
   const pool = suppliedPool ?? new Pool({
     connectionString: process.env.DATABASE_URL,
