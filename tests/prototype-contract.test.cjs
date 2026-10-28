@@ -26,6 +26,10 @@ test("sample activity does not use fake blockchain transaction hashes", () => {
   assert.match(html, /not verified on-chain/);
   assert.doesNotMatch(html, /0x7a9b4c8d2e1f3g5h6i/);
   assert.doesNotMatch(html, /0x2f8e5a1c9b7d4g3h/);
+  assert.doesNotMatch(html, /Application recorded on blockchain/i);
+  assert.doesNotMatch(html, /Payment successful!/i);
+  assert.doesNotMatch(html, /Wallet Connected \| Balance:/);
+  assert.doesNotMatch(html, /function generateTxHash\s*\(/);
 });
 
 test("navigation buttons expose their selected state and target sections", () => {
