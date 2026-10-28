@@ -317,6 +317,18 @@ export function buildApp({ pool: suppliedPool, jwtSecret = process.env.JWT_SECRE
   });
 
 
+
+  app.delete("/api/account", { preHandler: app.authenticate, schema: {
+    body: { type: "object", additionalProperties: false, required: ["password"], properties: { password: { type: "string", minLength: 1, maxLength: 128 } } }
+  } }, async (request, reply) => {
+    const result = await pool.query("SELECT password_hash FROM users WHERE id = $1 AND status = 'active'", [request.identity.id]);
+    if (!result.rowCount || !(await bcrypt.compare(request.body.password, result.rows[0].password_hash))) {
+      return reply.code(401).send({ error: "invalid_credentials" });
+    }
+    await pool.query("DELETE FROM users WHERE id = $1", [request.identity.id]);
+    return reply.code(204).send();
+  });
+
   app.get("/api/notifications", { preHandler: app.authenticate, schema: { querystring: { type: "object", additionalProperties: false, properties: { limit: { type: "integer", minimum: 1, maximum: 100, default: 30 } } } } }, async (request) => {
     const limit = request.query.limit ?? 30;
     const result = await pool.query("SELECT id, type, title, body, href, read_at, created_at FROM notifications WHERE user_id = $1 ORDER BY created_at DESC LIMIT $2", [request.identity.id, limit]);
