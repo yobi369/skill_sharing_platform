@@ -311,6 +311,69 @@ export function buildApp({ pool: suppliedPool, jwtSecret = process.env.JWT_SECRE
     return { request: result.rows[0] };
   });
 
+
+  app.get("/api/notifications", { preHandler: app.authenticate, schema: { querystring: { type: "object", additionalProperties: false, properties: { limit: { type: "integer", minimum: 1, maximum: 100, default: 30 } } } } }, async (request) => {
+    const limit = request.query.limit ?? 30;
+    const result = await pool.query("SELECT id, type, title, body, href, read_at, created_at FROM notifications WHERE user_id = $1 ORDER BY created_at DESC LIMIT $2", [request.identity.id, limit]);
+    return { items: result.rows, unread: result.rows.filter((item) => !item.read_at).length };
+  });
+
+  app.patch("/api/notifications/:id/read", { preHandler: app.authenticate, schema: { params: { type: "object", required: ["id"], properties: { id: idSchema } } } }, async (request, reply) => {
+    const result = await pool.query("UPDATE notifications SET read_at = now() WHERE id = $1 AND user_id = $2 RETURNING id, read_at", [request.params.id, request.identity.id]);
+    if (!result.rowCount) return reply.code(404).send({ error: "notification_not_found" });
+    return { notification: result.rows[0] };
+  });
+
+  app.post("/api/reports", { preHandler: app.authenticate, config: { rateLimit: { max: 5, timeWindow: "1 hour" } }, schema: {
+    body: { type: "object", additionalProperties: false, required: ["targetType", "targetId", "reason", "details"], properties: {
+      targetType: { type: "string", enum: ["skill", "user"] }, targetId: idSchema,
+      reason: { type: "string", enum: ["spam", "harassment", "fraud", "unsafe", "misleading", "other"] },
+      details: { type: "string", minLength: 10, maxLength: 2000 }
+    } }
+  } }, async (request, reply) => {
+    if (request.body.details.trim().length < 10) return reply.code(400).send({ error: "validation_error", message: "Please provide at least ten non-space characters." });
+    if (request.body.targetType === "user" && request.body.targetId === request.identity.id) return reply.code(400).send({ error: "cannot_report_self" });
+    const targetQuery = request.body.targetType === "skill"
+      ? await pool.query("SELECT owner_id AS user_id FROM skills WHERE id = $1 AND status = 'published'", [request.body.targetId])
+      : await pool.query("SELECT id AS user_id FROM users WHERE id = $1 AND status = 'active'", [request.body.targetId]);
+    if (!targetQuery.rowCount) return reply.code(404).send({ error: "report_target_not_found" });
+    const targetUserId = targetQuery.rows[0].user_id;
+    if (targetUserId === request.identity.id) return reply.code(400).send({ error: "cannot_report_own_content" });
+    const existing = await pool.query("SELECT id FROM reports WHERE reporter_id = $1 AND target_type = $2 AND target_id = $3 AND status IN ('open', 'reviewing')", [request.identity.id, request.body.targetType, request.body.targetId]);
+    if (existing.rowCount) return reply.code(409).send({ error: "report_already_open" });
+    const result = await pool.query("INSERT INTO reports (reporter_id, target_type, target_id, reason, details) VALUES ($1, $2, $3, $4, $5) RETURNING id, target_type, target_id, reason, status, created_at", [request.identity.id, request.body.targetType, request.body.targetId, request.body.reason, request.body.details.trim()]);
+    return reply.code(201).send({ report: result.rows[0] });
+  });
+
+  app.get("/api/admin/reports", { preHandler: [app.authenticate, async (request, reply) => { if (request.identity.role !== "admin") return reply.code(403).send({ error: "admin_required" }); }], schema: { querystring: { type: "object", additionalProperties: false, properties: { status: { type: "string", enum: ["open", "reviewing", "resolved", "dismissed"] }, limit: { type: "integer", minimum: 1, maximum: 100, default: 50 } } } } }, async (request) => {
+    const status = request.query.status ?? "open";
+    const limit = request.query.limit ?? 50;
+    const result = await pool.query("SELECT r.id, r.target_type, r.target_id, r.reason, r.details, r.status, r.moderator_note, r.created_at, reporter.name AS reporter_name, reporter.email AS reporter_email, r.moderator_id FROM reports r JOIN users reporter ON reporter.id = r.reporter_id WHERE r.status = $1 ORDER BY r.created_at ASC LIMIT $2", [status, limit]);
+    return { items: result.rows };
+  });
+
+  app.patch("/api/admin/reports/:id", { preHandler: [app.authenticate, async (request, reply) => { if (request.identity.role !== "admin") return reply.code(403).send({ error: "admin_required" }); }], schema: {
+    params: { type: "object", required: ["id"], properties: { id: idSchema } },
+    body: { type: "object", additionalProperties: false, required: ["status"], properties: { status: { type: "string", enum: ["reviewing", "resolved", "dismissed"] }, note: { type: "string", maxLength: 2000 }, suspendTarget: { type: "boolean", default: false } } }
+  } }, async (request, reply) => {
+    const report = await pool.query("SELECT id, target_type, target_id, status FROM reports WHERE id = $1", [request.params.id]);
+    if (!report.rowCount) return reply.code(404).send({ error: "report_not_found" });
+    const row = report.rows[0];
+    if (request.body.suspendTarget && request.body.status !== "resolved") return reply.code(400).send({ error: "suspension_requires_resolved_report" });
+    const client = await pool.connect();
+    try {
+      await client.query("BEGIN");
+      if (request.body.suspendTarget) {
+        if (row.target_type === "user") await client.query("UPDATE users SET status = 'suspended', updated_at = now() WHERE id = $1", [row.target_id]);
+        else await client.query("UPDATE skills SET status = 'archived', updated_at = now() WHERE id = $1", [row.target_id]);
+      }
+      const updated = await client.query("UPDATE reports SET status = $1, moderator_id = $2, moderator_note = $3, updated_at = now() WHERE id = $4 RETURNING id, target_type, target_id, reason, status, moderator_note, moderator_id, updated_at", [request.body.status, request.identity.id, (request.body.note ?? "").trim() || null, request.params.id]);
+      await client.query("COMMIT");
+      return { report: updated.rows[0] };
+    } catch (error) { await client.query("ROLLBACK").catch(() => {}); throw error; }
+    finally { client.release(); }
+  });
+
   return app;
 }
 
