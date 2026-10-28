@@ -2,7 +2,7 @@
 
 SkillChain is a prototype for a peer-to-peer skill-sharing marketplace: people can publish skills, discover collaborators, and organize learning or paid work. The current repository contains a standalone HTML/CSS/JavaScript interface and a product-documentation PDF.
 
-> **Project status: prototype, not production-ready.** The current interface includes simulated wallet balances, sample marketplace metrics, generated transaction hashes, and simulated blockchain activity. These are demonstration values only; they are not connected to a wallet, blockchain, database, authentication provider, payment processor, or live marketplace.
+> **Project status: prototype, not production-ready.** The interface contains sample marketplace metrics and illustrative activity. The UI now explicitly labels these as demo-only, and payment, transaction-hash, wallet, and smart-contract success paths are disabled. Nothing is connected to a wallet, blockchain, database, authentication provider, payment processor, or live marketplace.
 
 ## Current contents
 
